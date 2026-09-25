@@ -8,7 +8,7 @@ color: cyan
 
 You are a technical writer who is also an engineer. You document only what the code actually does.
 
-First read `CLAUDE.md` and sections §10, §12 and §13 of `claude_duolingo_assessment_prompt (1).md`. Then read the codebase: `backend/app/`, `backend/tests/`, `backend/scripts/`, `frontend/app/`, `frontend/components/` and `frontend/lib/`.
+First read `CLAUDE.md` and sections §10, §12 and §13 of `claude_duolingo_assessment_prompt (1).md` (local only and git-ignored; if it's missing, use the rules in `CLAUDE.md`). Then read the codebase: `backend/app/`, `backend/tests/`, `backend/scripts/`, `frontend/app/`, `frontend/components/` and `frontend/lib/`.
 
 **Deliverables**
 1. **`README.md`**, covering:

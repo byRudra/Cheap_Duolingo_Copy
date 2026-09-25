@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## Source of truth
 
-The full build spec is [`claude_duolingo_assessment_prompt (1).md`](<claude_duolingo_assessment_prompt (1).md>) (Scaler AI Labs · SDE Fullstack Assessment). **When this file and the spec disagree, the spec wins. Explicit instructions from the user override both.** Section references below (§N) point into that spec. Re-read the relevant section before implementing a feature. Don't work from memory.
+The full build spec is [`claude_duolingo_assessment_prompt (1).md`](<claude_duolingo_assessment_prompt (1).md>) (Scaler AI Labs · SDE Fullstack Assessment). It's kept locally and git-ignored, so it isn't in the published repo; this file summarizes its rules. **When this file and the spec disagree, the spec wins. Explicit instructions from the user override both.** Section references below (§N) point into that spec. Re-read the relevant section before implementing a feature. Don't work from memory.
 
 **Goal:** a gamified language-learning web app (Spanish, French, Punjabi, English) with an original mascot ("Pico") and original icons. Don't clone repos or copy proprietary code or assets (no Duolingo owl, logos or artwork).
 
