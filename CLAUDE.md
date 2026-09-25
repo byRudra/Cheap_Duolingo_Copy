@@ -46,14 +46,14 @@ Rules for using them:
 
 Update this list as phases complete.
 
-- [ ] 1 · Inspect: workspace, tooling, plan (≤10 lines)
-- [ ] 2 · Backend: config, models, seed, services, all endpoints. Exit: seed runs, `/docs` works, smoke test passes
-- [ ] 3 · Tests: pytest suite from §9.1. Exit: `pytest` green
-- [ ] 4 · Path: layout, nav, stats bar, learning path, popover. Exit: home renders live data showing all 4 skill states
-- [ ] 5 · Lesson: player, 5 exercise types, feedback, completion, out-of-hearts. Exit: full lesson playable end to end
-- [ ] 6 · Secondary: profile, leaderboard, achievements, settings. Exit: all routes render
-- [ ] 7 · Polish: animations, responsive pass, loading/error/empty states. Exit: `npm run build` passes
-- [ ] 8 · Verify: §9.2–9.4, fix everything found. Exit: journey passes after a hard refresh
+- [x] 1 · Inspect: workspace, tooling, plan (≤10 lines)
+- [x] 2 · Backend: config, models, seed, services, all endpoints. Exit: seed runs, `/docs` works, smoke test passes
+- [x] 3 · Tests: pytest suite from §9.1. Exit: `pytest` green
+- [x] 4 · Path: layout, nav, stats bar, learning path, popover. Exit: home renders live data showing all 4 skill states
+- [x] 5 · Lesson: player, 5 exercise types, feedback, completion, out-of-hearts. Exit: full lesson playable end to end
+- [x] 6 · Secondary: profile, leaderboard, achievements, settings. Exit: all routes render
+- [x] 7 · Polish: animations, responsive pass, loading/error/empty states. Exit: `npm run build` passes
+- [x] 8 · Verify: §9.2–9.4, fix everything found. Exit: journey passes after a hard refresh
 - [ ] 9 · Docs: README, INTERVIEW_NOTES, `.env.example` files. Exit: setup commands re-run from scratch successfully
 
 ## Environment (this machine)
