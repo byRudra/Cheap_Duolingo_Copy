@@ -1,6 +1,6 @@
-# Habla frontend
+# Duolingo frontend
 
-This is the Next.js (App Router) frontend for Habla. Full setup, architecture and demo instructions are in the [root README](../README.md).
+This is the Next.js (App Router) frontend for the Duolingo demo app. Full setup, architecture and demo instructions are in the [root README](../README.md).
 
 ```bash
 npm install

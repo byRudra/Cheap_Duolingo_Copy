@@ -33,7 +33,7 @@ export function LearningPath({ course }: { course: Course }) {
       {course.units.map((unit) => (
         <section key={unit.id} aria-labelledby={`unit-${unit.id}`}>
           <header
-            className="mb-10 rounded-2xl border-b-4 px-5 py-4 text-white"
+            className="mb-16 rounded-2xl border-b-4 px-5 py-4 text-white"
             style={{ backgroundColor: unit.color, borderColor: "rgba(0,0,0,.2)" }}
           >
             <p className="text-sm font-extrabold tracking-wide uppercase opacity-80">Unit {unit.order_index}</p>

@@ -64,7 +64,7 @@ export function DailyGoalCard() {
           <p className="text-xl font-black">
             {earned} / {goal} XP
           </p>
-          <p className="text-sm text-muted">{met ? "Goal complete. ¡Excelente!" : `${goal - earned} XP to go today`}</p>
+          <p className="text-sm text-muted">{met ? "Goal complete. Great work!" : `${goal - earned} XP to go today`}</p>
         </div>
       </div>
     </Card>

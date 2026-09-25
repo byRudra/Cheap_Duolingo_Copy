@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy import func, select
 
 import app.seed as seed_module
+from app.config import settings
 from app.content import COURSES
 from app.models import (
     Course,
@@ -100,15 +101,40 @@ def test_course_reset_applies_to_the_active_course(api, seeded_db):
     assert done[SPANISH] == 3
 
 
-def test_course_reset_then_replay_counts_as_first_completion(api, seeded_db):
+def test_course_reset_then_replay_of_a_seeded_lesson_pays_practice_xp(api, seeded_db):
     db = seeded_db
     reset(api, "course")
     first = lesson_ids(db, 1)[0]
+    meta = api.get(f"/api/lessons/{first}").json()
+    assert meta["status"] == "AVAILABLE"
+    assert meta["is_practice"] is True and meta["xp_reward"] == settings.PRACTICE_XP  # intro matches payout
     summary = finish(api, db, first)
-    assert summary["xp_earned"] == 15  # first completion again (base + perfect)
-    assert summary["skill"]["state"] == "IN_PROGRESS"
+    assert summary["xp_earned"] == settings.PRACTICE_XP  # completed before the reset: no farming
+    assert summary["skill"]["state"] == "IN_PROGRESS"  # progress itself is rebuilt
     # Lessons after the reset point are locked again.
     assert_error(api.post(f"/api/lessons/{lesson_ids(db, 2)[1]}/start"), 403, "LESSON_LOCKED")
+
+
+def test_play_reset_replay_pays_practice_xp(api, seeded_db):
+    db = seeded_db
+    fresh = lesson_ids(db, 2)[1]  # never completed in the seed
+    assert finish(api, db, fresh)["xp_earned"] == 15
+    reset(api, "course")
+    for skill_order in (1, 2):
+        for lesson in lesson_ids(db, skill_order):
+            if lesson != fresh:
+                finish(api, db, lesson)
+    assert api.get(f"/api/lessons/{fresh}").json()["xp_reward"] == settings.PRACTICE_XP
+    assert finish(api, db, fresh)["xp_earned"] == settings.PRACTICE_XP
+
+
+def test_never_completed_lesson_still_pays_full_xp_after_reset(api, seeded_db):
+    db = seeded_db
+    reset(api, "course")
+    for lesson in lesson_ids(db, 1):
+        finish(api, db, lesson)
+    meta = api.get(f"/api/lessons/{lesson_ids(db, 2)[1]}").json()
+    assert meta["is_practice"] is False and meta["xp_reward"] == settings.BASE_LESSON_XP
 
 
 def test_in_flight_attempt_cannot_complete_a_lesson_locked_by_a_reset(api, seeded_db):
@@ -182,8 +208,16 @@ def test_demo_reset_restores_a_fresh_seed(api, seeded_db, pinned_seed_clock):
     assert api.get("/api/courses").json() == fresh_courses
     assert api.get("/api/profile").json() == fresh_profile
     assert api.get("/api/leaderboard").json() == fresh_board
-    assert table_snapshot(db) == {**fresh_counts, "LessonAttempt": 0}
+    assert table_snapshot(db) == fresh_counts
     assert achievement_codes(db) == ["FIRST_LESSON", "STREAK_3"]
+
+
+def test_demo_reset_can_be_disabled(api, seeded_db, monkeypatch):
+    monkeypatch.setattr(settings, "ALLOW_DEMO_RESET", False)
+    before = table_snapshot(seeded_db)
+    assert_error(reset(api, "demo"), 403, "DEMO_RESET_DISABLED")
+    assert table_snapshot(seeded_db) == before
+    assert reset(api, "course").status_code == 200  # course reset is unaffected
 
 
 def test_demo_reset_is_repeatable(api, seeded_db, pinned_seed_clock):

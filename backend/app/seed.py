@@ -22,10 +22,13 @@ from app.content.builders import validate_course
 from app.database import Base, SessionLocal, engine
 from app.models import (
     Achievement,
+    AttemptMode,
+    AttemptStatus,
     Course,
     DailyActivity,
     Exercise,
     Lesson,
+    LessonAttempt,
     Skill,
     Unit,
     User,
@@ -143,6 +146,14 @@ def seed(db: Session, now: datetime | None = None) -> None:
     db.add(UserSkillProgress(user_id=arnav.id, skill_id=introductions.id,
                              unlocked_at=_utc_at_local_noon(day[1], tz), lessons_completed=1))
     # 45 XP = three first completions (10 each) + three practice replays (5 each).
+    # The attempt history backs the XP and keeps a course reset from re-paying first-completion XP.
+    replays = [greetings.lessons[0], greetings.lessons[0], greetings.lessons[1]]
+    for (lesson, when), replay in zip(completed, replays):
+        for offset, played, xp in ((0, lesson, settings.BASE_LESSON_XP), (30, replay, settings.PRACTICE_XP)):
+            finished = _utc_at_local_noon(when, tz) + timedelta(minutes=offset)
+            db.add(LessonAttempt(user_id=arnav.id, lesson_id=played.id, mode=AttemptMode.LESSON,
+                                 status=AttemptStatus.COMPLETED, mistakes=1, xp_awarded=xp,
+                                 started_at=finished - timedelta(minutes=5), completed_at=finished))
     for when in day:
         db.add(DailyActivity(user_id=arnav.id, date=when, xp_earned=15, lessons_completed=2))
     db.add(UserAchievement(user_id=arnav.id, achievement_id=achievements["FIRST_LESSON"].id,

@@ -587,7 +587,7 @@ def test_lessons_5_counts_distinct_lessons_only(api, seeded_db, intro_2, greet_1
 def test_fresh_learner_first_lesson(api, seeded_db, greet_1):
     """A learner with no history: streak starts at 1, FIRST_LESSON + PERFECT_LESSON."""
     user = set_user(seeded_db, xp=0, streak=0, longest_streak=0, last_activity_date=None)
-    for model in (UserAchievement, UserLessonProgress, UserSkillProgress, DailyActivity):
+    for model in (UserAchievement, UserLessonProgress, UserSkillProgress, DailyActivity, LessonAttempt):
         seeded_db.execute(delete(model).where(model.user_id == user.id))
     seeded_db.commit()
 

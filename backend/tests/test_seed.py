@@ -15,6 +15,7 @@ from app.models import (
     Exercise,
     ExerciseType,
     Lesson,
+    LessonAttempt,
     Skill,
     Unit,
     User,
@@ -326,3 +327,16 @@ def test_seed_cli_reset_rebuilds_the_same_data(db, seed_cli):
     seed_cli("--reset")
     assert snapshot(db) == first
     assert get_user(db).xp == 45
+
+
+def test_seeded_attempt_history_backs_the_xp(seeded_db):
+    """Every seeded XP point comes from a completed attempt; each seeded lesson has one."""
+    db = seeded_db
+    user = get_user(db)
+    attempts = db.scalars(select(LessonAttempt).where(LessonAttempt.user_id == user.id)).all()
+    assert sum(a.xp_awarded for a in attempts) == user.xp == 45
+    assert all(a.mistakes > 0 for a in attempts)  # PERFECT_LESSON stays locked
+    progress = db.scalars(select(UserLessonProgress.lesson_id).where(UserLessonProgress.user_id == user.id))
+    assert set(progress) == {a.lesson_id for a in attempts}
+    activity = db.scalars(select(DailyActivity).where(DailyActivity.user_id == user.id)).all()
+    assert sum(a.lessons_completed for a in activity) == len(attempts)

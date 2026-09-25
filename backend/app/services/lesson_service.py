@@ -54,12 +54,33 @@ def _get_attempt(db: Session, user: User, attempt_id: int) -> LessonAttempt:
     return attempt
 
 
+def completed_before(db: Session, user: User, lesson_id: int, exclude_attempt_id: int | None = None) -> bool:
+    """Has the learner ever completed this lesson (not heart practice)?
+
+    Attempt history survives a course reset, so a reset can't be used to farm
+    first-completion XP. Shared by the intro screen and ``complete_attempt``.
+    """
+    return bool(
+        db.scalar(
+            select(
+                exists().where(
+                    LessonAttempt.user_id == user.id,
+                    LessonAttempt.lesson_id == lesson_id,
+                    LessonAttempt.mode == AttemptMode.LESSON,
+                    LessonAttempt.status == AttemptStatus.COMPLETED,
+                    LessonAttempt.id != (exclude_attempt_id or 0),
+                )
+            )
+        )
+    )
+
+
 def lesson_meta(db: Session, user: User, lesson_id: int, cfg: Settings = settings) -> LessonMetaOut:
     lesson = _get_lesson(db, lesson_id)
     status = progress_service.lesson_status(db, user, lesson)
     skill = lesson.skill
     course = skill.unit.course
-    is_practice = status == "COMPLETED"
+    is_practice = status == "COMPLETED" or completed_before(db, user, lesson.id)
     return LessonMetaOut(
         id=lesson.id,
         title=lesson.title,
@@ -331,20 +352,10 @@ def complete_attempt(
 
     # Progress + unlocks
     update_info = progress_service.record_lesson_completion(db, user, lesson, attempt.mistakes, now)
-    # A lesson completed before a course reset still counts as a replay, so
-    # resetting can't be used to farm first-completion XP.
-    completed_before = db.scalar(
-        select(
-            exists().where(
-                LessonAttempt.user_id == user.id,
-                LessonAttempt.lesson_id == lesson.id,
-                LessonAttempt.mode == AttemptMode.LESSON,
-                LessonAttempt.status == AttemptStatus.COMPLETED,
-                LessonAttempt.id != attempt.id,
-            )
-        )
+    # A lesson completed before a course reset still counts as a replay.
+    first_completion = update_info.first_completion and not completed_before(
+        db, user, lesson.id, exclude_attempt_id=attempt.id
     )
-    first_completion = update_info.first_completion and not completed_before
     xp = gamification.lesson_xp(first_completion, attempt.mistakes, cfg)
 
     # Streak

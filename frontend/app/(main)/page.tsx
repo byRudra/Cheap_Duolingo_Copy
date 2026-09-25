@@ -51,8 +51,7 @@ function Hero({ course }: { course: Course }) {
         <p className="text-sm font-extrabold tracking-wide text-muted uppercase">{course.title} course</p>
         <h1 className="text-2xl font-black">
           {greeting}
-          {me ? `, ${me.display_name}` : ""}
-          {course.language_code === "es" ? "!" : "!"}
+          {me ? `, ${me.display_name}` : ""}!
         </h1>
         <div className="mt-2 flex items-center gap-2">
           <div className="h-3 flex-1 overflow-hidden rounded-full bg-line" aria-hidden="true">
@@ -67,7 +66,7 @@ function Hero({ course }: { course: Course }) {
             {current.state === "AVAILABLE" ? "Start" : "Continue"}: {current.title}
           </Link>
         ) : (
-          <p className="mt-3 font-bold text-primary-ink">You&apos;ve completed the whole course. ¡Increíble!</p>
+          <p className="mt-3 font-bold text-primary-ink">You&apos;ve completed the whole course. Amazing work!</p>
         )}
       </div>
     </section>

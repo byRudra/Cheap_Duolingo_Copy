@@ -8,6 +8,7 @@ from app.clock import local_date
 from app.config import settings
 from app.database import get_db
 from app.deps import get_current_user, get_now
+from app.errors import AppError
 from app.models import DailyActivity, User
 from app.schemas import (
     DailyGoalOut,
@@ -127,6 +128,9 @@ def reset(
         progress_service.reset_course_progress(db, user, course, now)
         db.commit()
         return ResetOut(scope="course", message=f"Your {course.title} progress was reset.")
+
+    if not settings.ALLOW_DEMO_RESET:
+        raise AppError(403, "DEMO_RESET_DISABLED", "Restoring the demo is turned off on this server.")
 
     from app.seed import restore_demo
 

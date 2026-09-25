@@ -265,3 +265,18 @@ def test_curly_apostrophe_with_missing_accent_gets_note():
 @pytest.mark.parametrize("kind", [MC, FB])
 def test_choice_matches_curly_apostrophe(kind):
     assert check_answer(kind, {"answer": "l'eau"}, {"answer": f"l{CURLY}eau"}).correct
+
+
+DANDA, DOUBLE_DANDA = chr(0x0964), chr(0x0965)  # । ॥
+SAT = chr(0x0A38) + chr(0x0A24)  # ਸਤ (Gurmukhi)
+
+
+def test_normalize_strips_danda_and_double_danda():
+    assert normalize(f"{SAT}{DANDA}") == normalize(SAT) == SAT
+    assert normalize(f"{SAT} {DOUBLE_DANDA}") == SAT
+    assert normalize(f"{SAT}{DANDA} {SAT}") == f"{SAT} {SAT}"
+
+
+def test_normalize_maps_hyphens_to_spaces():
+    assert normalize("Parlez-vous") == normalize("parlez vous") == "parlez vous"
+    assert normalize("well - known") == "well known"  # whitespace collapses afterwards

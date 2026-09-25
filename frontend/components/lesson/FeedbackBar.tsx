@@ -5,7 +5,7 @@ import type { AnswerResult } from "@/lib/types";
 import { Button } from "../ui/Button";
 import { CheckIcon, CloseIcon } from "../ui/icons";
 
-const PRAISE = ["Nice!", "Great job!", "Excellent!", "¡Muy bien!", "Correct!"];
+const PRAISE = ["Nice!", "Great job!", "Excellent!", "Well done!", "Correct!"];
 
 interface FeedbackBarProps {
   /** null while answering: shows the Check button. */

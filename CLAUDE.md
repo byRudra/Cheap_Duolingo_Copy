@@ -6,7 +6,14 @@ Guidance for Claude Code when working in this repository.
 
 The full build spec is [`claude_duolingo_assessment_prompt (1).md`](<claude_duolingo_assessment_prompt (1).md>) (Scaler AI Labs · SDE Fullstack Assessment). **When this file and the spec disagree, the spec wins. Explicit instructions from the user override both.** Section references below (§N) point into that spec. Re-read the relevant section before implementing a feature. Don't work from memory.
 
-**Goal:** a Duolingo-inspired, gamified Spanish-learning web app with an **original name and mascot** (e.g. *Habla*). "Duolingo-inspired" may appear **only** in `README.md`. Don't clone repos or copy proprietary code or assets.
+**Goal:** a gamified language-learning web app (Spanish, French, Punjabi, English) with an original mascot ("Pico") and original icons. Don't clone repos or copy proprietary code or assets (no Duolingo owl, logos or artwork).
+
+## User overrides (explicit instructions that supersede the spec)
+
+- **Branding is "Duolingo".** The user asked for this despite spec §0 (original name). The name lives in one constant each: `frontend/lib/brand.ts` (`APP_NAME`) and `backend/app/config.py` (`APP_NAME`). The mascot, icons and artwork stay original.
+- **Multiple courses:** Spanish (the spec's demo course), French, Punjabi (Gurmukhi, romanized input accepted) and English (monolingual beginner course). Content lives in `backend/app/content/<lang>.py`, registered in `backend/app/content/__init__.py`, and every course must pass `content/builders.validate_course`.
+- **Nothing is "Coming soon".** Settings (profile, theme, learning language, notifications, sound, account reset/restore) all work and persist, and the out-of-hearts modal's Practice button starts real heart practice (`/practice`, `POST /api/practice/start`: mistakes are free, finishing restores one heart, no XP).
+- **Dark mode:** Light/Dark/System, stored per device, applied as `data-theme` on `<html>` before paint. Use theme tokens (`bg-card`, `bg-surface`, `text-ink`, `text-muted`, `*-light` backgrounds with `text-*-ink`), never `bg-white` for themed surfaces.
 
 ## How to work
 
@@ -131,7 +138,7 @@ lib/api.ts    # typed fetch wrapper; parses the error format; throws typed error
 lib/types.ts  # mirrors the Pydantic schemas
 ```
 
-Routes: `/` (path plus a right rail with streak, daily goal and hearts) · `/lesson/[id]` (full screen, no nav) · `/profile` · `/leaderboard` · `/settings` ("Coming soon" toggles only). Desktop (≥1024px) gets a left sidebar; mobile gets a bottom tab bar.
+Routes: `/` (path plus a right rail with streak, daily goal and hearts) · `/lesson/[id]` (full screen, no nav) · `/profile` · `/leaderboard` · `/settings` (all settings work) · `/practice` (heart practice, full screen). Desktop (≥1024px) gets a left sidebar; mobile gets a bottom tab bar.
 
 ## Non-negotiable rules
 
@@ -214,7 +221,7 @@ All 13 tables listed in §4 are normalized, with FKs, indexes on FK columns and 
 ### Seed data (§7)
 
 `python -m app.seed --reset` must be idempotent.
-- **Course and learner:** Spanish 🇪🇸, 3 units, 9 skills, 2 lessons per skill, 5–7 exercises per lesson. Every lesson uses ≥3 exercise types, and every type appears in Unit 1.
+- **Course and learner:** Spanish 🇪🇸, 3 units, 9 skills, 2 lessons per skill, 5–7 exercises per lesson. Every lesson uses ≥3 exercise types, and every type appears in Unit 1. French, Punjabi and English have 2 units × 3 skills × 2 lessons × 6 exercises each; skill `order_index` restarts at 1 in every course.
 - **Spanish quality:** the Spanish must be correct: accents, `¿ ¡`, gender agreement.
 - **Learner `arnav`:** Greetings COMPLETED (2/2), Introductions IN_PROGRESS (1/2), all other skills LOCKED. XP 45, gems 500, hearts 5, daily goal 20, streak 3. There are `daily_activity` rows for the **previous 3 days, not today**, and `last_activity_date` is yesterday. `FIRST_LESSON` and `STREAK_3` are unlocked and `PERFECT_LESSON` is **not**, so keep the seeded history consistent with that.
 - **Seed dates:** compute them relative to "today" in `APP_TIMEZONE` when the seed runs. Re-seed before a demo, or the streak shows as broken.

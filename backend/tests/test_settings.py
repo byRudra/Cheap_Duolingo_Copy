@@ -132,3 +132,16 @@ def test_cors_allows_patch(client):
     assert res.status_code == 200
     assert "PATCH" in res.headers["access-control-allow-methods"]
     assert res.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def test_patch_ignores_protected_fields(api, seeded_db):
+    before = api.get("/api/me").json()
+    res = patch(api, display_name="Hacker", xp=99999, hearts=0, gems=99999, streak=365,
+                longest_streak=365, active_course_id=2, max_hearts=50)
+    assert res.status_code == 200, res.json()
+    after = api.get("/api/me").json()
+    assert after["settings"]["display_name"] == "Hacker"
+    for field in ("xp", "hearts", "gems", "streak", "longest_streak", "max_hearts", "active_course"):
+        assert after[field] == before[field], field
+    user = get_user(seeded_db)
+    assert (user.xp, user.gems, user.hearts) == (before["xp"], before["gems"], before["hearts"])

@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     AUTO_SEED: bool = True
     DEMO_USERNAME: str = "arnav"
     APP_NAME: str = "Duolingo"
+    # POST /api/me/reset {"scope": "demo"} wipes every table; turn off on a public deploy.
+    ALLOW_DEMO_RESET: bool = True
 
     # Game rules (§3.1)
     MAX_HEARTS: int = 5
