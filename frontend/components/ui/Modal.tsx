@@ -37,7 +37,7 @@ export function Modal({ title, onClose, children }: ModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-md animate-slide-up rounded-t-3xl bg-white p-6 shadow-xl sm:rounded-3xl"
+        className="w-full max-w-md animate-slide-up rounded-t-3xl bg-card p-6 shadow-xl sm:rounded-3xl"
       >
         <h2 id={titleId} className="sr-only">
           {title}

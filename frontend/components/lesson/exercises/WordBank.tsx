@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { ExerciseProps } from "./types";
 
 const TILE =
-  "min-h-12 rounded-2xl border-2 border-b-4 border-line bg-white px-4 py-2 text-lg font-bold text-ink transition-transform active:translate-y-0.5 disabled:cursor-default";
+  "min-h-12 rounded-2xl border-2 border-b-4 border-line bg-card px-4 py-2 text-lg font-bold text-ink transition-transform active:translate-y-0.5 disabled:cursor-default";
 
 export function WordBank({ exercise, disabled, status, onAnswerChange }: ExerciseProps<"WORD_BANK">) {
   const { tiles } = exercise.payload;
@@ -18,7 +18,7 @@ export function WordBank({ exercise, disabled, status, onAnswerChange }: Exercis
   }
 
   const lineTone =
-    status === "correct" ? "text-primary-dark" : status === "incorrect" ? "text-danger-dark animate-shake" : "";
+    status === "correct" ? "text-primary-ink" : status === "incorrect" ? "text-danger-ink animate-shake" : "";
 
   return (
     <div className="flex flex-col gap-6">

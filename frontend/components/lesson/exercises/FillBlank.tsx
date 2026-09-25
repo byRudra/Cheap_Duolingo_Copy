@@ -20,10 +20,10 @@ export function FillBlank({ exercise, disabled, status, onAnswerChange }: Exerci
 
   const blankTone =
     status === "correct"
-      ? "border-primary text-primary-dark"
+      ? "border-primary text-primary-ink"
       : status === "incorrect"
-        ? "border-danger text-danger-dark"
-        : "border-secondary text-secondary-dark";
+        ? "border-danger text-danger-ink"
+        : "border-secondary text-secondary-ink";
 
   return (
     <div className="flex flex-col gap-6">

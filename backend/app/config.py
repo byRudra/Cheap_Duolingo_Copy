@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
     AUTO_SEED: bool = True
     DEMO_USERNAME: str = "arnav"
+    APP_NAME: str = "Duolingo"
 
     # Game rules (§3.1)
     MAX_HEARTS: int = 5

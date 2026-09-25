@@ -38,8 +38,8 @@ def get_profile(
     user: User = Depends(get_current_user),
     now: datetime = Depends(get_now),
 ):
-    course = progress_service.get_course(db)
-    skills_done, skills_total = progress_service.count_completed_skills(db, user)
+    course = progress_service.active_course(db, user)
+    skills_done, skills_total = progress_service.count_completed_skills(db, user, course)
     return ProfileOut(
         id=user.id,
         username=user.username,
@@ -56,6 +56,7 @@ def get_profile(
         course_title=course.title,
         course_flag=course.flag_emoji,
         course_language_code=course.language_code,
+        courses=progress_service.course_summaries(db, user),
         achievements=_achievements(db, user),
     )
 

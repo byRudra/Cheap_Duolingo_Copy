@@ -48,3 +48,13 @@ def complete_attempt(
     now: datetime = Depends(get_now),
 ):
     return lesson_service.complete_attempt(db, user, attempt_id, now)
+
+
+@router.post("/practice/start", response_model=AttemptStartOut)
+def start_practice(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+    now: datetime = Depends(get_now),
+):
+    """Heart practice: works at 0 hearts, mistakes are free, finishing restores a heart."""
+    return lesson_service.start_practice(db, user, now)

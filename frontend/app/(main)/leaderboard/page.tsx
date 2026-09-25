@@ -22,7 +22,7 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <span className="truncate font-extrabold">{entry.display_name}</span>
         {you && (
-          <span className="shrink-0 rounded-lg border-2 border-secondary bg-white px-2 text-xs font-black tracking-wide uppercase">
+          <span className="shrink-0 rounded-lg border-2 border-secondary bg-card px-2 text-xs font-black tracking-wide uppercase">
             You
           </span>
         )}

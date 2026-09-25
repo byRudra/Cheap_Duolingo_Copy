@@ -9,20 +9,22 @@ unlock one after another.
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.errors import AppError
 from app.models import (
+    AttemptStatus,
     Course,
     Lesson,
+    LessonAttempt,
     Skill,
     Unit,
     User,
     UserLessonProgress,
     UserSkillProgress,
 )
-from app.schemas import CourseOut, LessonNode, SkillNode, UnitNode
+from app.schemas import CourseBrief, CourseOut, CourseSummary, LessonNode, SkillNode, UnitNode
 
 
 @dataclass
@@ -50,19 +52,42 @@ class SkillView:
         return lessons[0].id  # all done → practice from the start
 
 
-def get_course(db: Session) -> Course:
-    course = db.scalars(
-        select(Course)
-        .options(
-            selectinload(Course.units)
-            .selectinload(Unit.skills)
-            .selectinload(Skill.lessons)
-        )
-        .order_by(Course.id)
-    ).first()
+def _course_query():
+    return select(Course).options(
+        selectinload(Course.units).selectinload(Unit.skills).selectinload(Skill.lessons)
+    )
+
+
+def get_course(db: Session, course_id: int | None = None) -> Course:
+    """Load a course with its units, skills and lessons (the first course by default)."""
+    query = _course_query().order_by(Course.id)
+    if course_id is not None:
+        query = query.where(Course.id == course_id)
+    course = db.scalars(query).first()
     if course is None:
+        if course_id is not None:
+            raise AppError(404, "COURSE_NOT_FOUND", "That course doesn't exist.")
         raise AppError(503, "NOT_SEEDED", "No course found. Run `python -m app.seed`.")
     return course
+
+
+def active_course(db: Session, user: User) -> Course:
+    """The learner's selected course, falling back to the first one."""
+    if user.active_course_id is not None:
+        course = db.scalars(_course_query().where(Course.id == user.active_course_id)).first()
+        if course is not None:
+            return course
+    return get_course(db)
+
+
+def course_of_lesson(db: Session, lesson: Lesson) -> Course:
+    return get_course(db, lesson.skill.unit.course_id)
+
+
+def course_brief(course: Course) -> CourseBrief:
+    return CourseBrief(
+        id=course.id, title=course.title, language_code=course.language_code, flag_emoji=course.flag_emoji
+    )
 
 
 def ordered_skills(course: Course) -> list[Skill]:
@@ -117,12 +142,12 @@ def skill_views_for_user(db: Session, user: User, course: Course) -> dict[int, S
 
 
 def lesson_status(db: Session, user: User, lesson: Lesson) -> str:
-    views = skill_views_for_user(db, user, get_course(db))
+    views = skill_views_for_user(db, user, course_of_lesson(db, lesson))
     return views[lesson.skill_id].lesson_status[lesson.id]
 
 
 def build_course_tree(db: Session, user: User) -> CourseOut:
-    course = get_course(db)
+    course = active_course(db, user)
     views = skill_views_for_user(db, user, course)
 
     current_skill_id: int | None = None
@@ -191,7 +216,7 @@ def record_lesson_completion(
     db: Session, user: User, lesson: Lesson, mistakes: int, now: datetime
 ) -> ProgressUpdate:
     """Update lesson/skill progress and unlock the next skill. Caller commits."""
-    course = get_course(db)
+    course = course_of_lesson(db, lesson)
     skills = ordered_skills(course)
     completed_before = completed_lesson_ids(db, user.id)
     views_before = derive_skill_views(skills, completed_before)
@@ -242,8 +267,7 @@ def _skill_progress_row(db: Session, user_id: int, skill_id: int, now: datetime)
     return row
 
 
-def count_completed_skills(db: Session, user: User) -> tuple[int, int]:
-    course = get_course(db)
+def count_completed_skills(db: Session, user: User, course: Course) -> tuple[int, int]:
     views = skill_views_for_user(db, user, course)
     done = sum(1 for v in views.values() if v.state == "COMPLETED")
     return done, len(views)
@@ -255,3 +279,54 @@ def count_completed_lessons(db: Session, user: User) -> int:
             UserLessonProgress.user_id == user.id
         )
     ) or 0
+
+
+def course_summaries(db: Session, user: User) -> list[CourseSummary]:
+    """Every course with the learner's progress, for the course switcher."""
+    completed = completed_lesson_ids(db, user.id)
+    active_id = active_course(db, user).id
+    summaries = []
+    for course in db.scalars(_course_query().order_by(Course.id)):
+        lesson_ids = [l.id for u in course.units for s in u.skills for l in s.lessons]
+        done = sum(1 for lesson_id in lesson_ids if lesson_id in completed)
+        summaries.append(
+            CourseSummary(
+                **course_brief(course).model_dump(),
+                description=course.description,
+                is_active=course.id == active_id,
+                lessons_completed=done,
+                lessons_total=len(lesson_ids),
+                progress=round(100 * done / len(lesson_ids)) if lesson_ids else 0,
+            )
+        )
+    return summaries
+
+
+def reset_course_progress(db: Session, user: User, course: Course, now: datetime) -> None:
+    """Forget the learner's lesson/skill progress in one course. XP and streak stay.
+
+    Open attempts in the course are failed, so one started before the reset
+    can't complete a lesson the reset just locked again.
+    """
+    lesson_ids = [l.id for u in course.units for s in u.skills for l in s.lessons]
+    skill_ids = [s.id for u in course.units for s in u.skills]
+    db.execute(
+        update(LessonAttempt)
+        .where(
+            LessonAttempt.user_id == user.id,
+            LessonAttempt.lesson_id.in_(lesson_ids),
+            LessonAttempt.status == AttemptStatus.IN_PROGRESS,
+        )
+        .values(status=AttemptStatus.FAILED, completed_at=now)
+        .execution_options(synchronize_session=False)
+    )
+    db.execute(
+        delete(UserLessonProgress).where(
+            UserLessonProgress.user_id == user.id, UserLessonProgress.lesson_id.in_(lesson_ids)
+        )
+    )
+    db.execute(
+        delete(UserSkillProgress).where(
+            UserSkillProgress.user_id == user.id, UserSkillProgress.skill_id.in_(skill_ids)
+        )
+    )

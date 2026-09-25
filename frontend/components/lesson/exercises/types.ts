@@ -1,10 +1,17 @@
 import type { AnswerPayload, ExerciseOf, ExerciseType } from "@/lib/types";
 
+/** The language being learned, e.g. { code: "fr", name: "French" }. */
+export interface LessonLanguage {
+  code: string;
+  name: string;
+}
+
 /** Outcome of the last Check, used for per-option styling during FEEDBACK. */
 export type CheckStatus = "idle" | "correct" | "incorrect";
 
 export interface ExerciseProps<T extends ExerciseType> {
   exercise: ExerciseOf<T>;
+  language: LessonLanguage;
   /** True while checking or showing feedback: inputs are locked. */
   disabled: boolean;
   status: CheckStatus;

@@ -8,8 +8,11 @@ interface ApiState<T> {
   loading: boolean;
 }
 
-/** Fetch on mount with loading/error state and a `reload` for Retry buttons. */
-export function useApi<T>(fetcher: () => Promise<T>) {
+/**
+ * Fetch on mount with loading/error state and a `reload` for Retry buttons.
+ * Changing `key` (e.g. the active course id) refetches.
+ */
+export function useApi<T>(fetcher: () => Promise<T>, key?: string | number | null) {
   const [state, setState] = useState<ApiState<T>>({ data: null, error: null, loading: true });
   const [version, setVersion] = useState(0);
 
@@ -28,7 +31,7 @@ export function useApi<T>(fetcher: () => Promise<T>) {
     };
     // `fetcher` is expected to be a stable module-level function.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version]);
+  }, [version, key]);
 
   const reload = useCallback(() => {
     setState((s) => ({ ...s, error: null, loading: true }));

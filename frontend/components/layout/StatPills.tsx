@@ -2,12 +2,11 @@
 
 import { useUserStats } from "@/context/UserStatsContext";
 
-import { CourseFlag } from "../ui/CourseFlag";
 import { FlameIcon, GemIcon, HeartIcon } from "../ui/icons";
 import { Skeleton } from "../ui/States";
 
 /** Compact streak · gems · hearts readout used in the mobile top bar and rail. */
-export function StatPills({ flag }: { flag?: string }) {
+export function StatPills() {
   const { me, loading } = useUserStats();
 
   if (loading && !me) {
@@ -24,11 +23,6 @@ export function StatPills({ flag }: { flag?: string }) {
   const streakActive = me.streak_extended_today;
   return (
     <div className="flex items-center gap-1 sm:gap-3">
-      {flag && (
-        <span className="mr-1 flex items-center">
-          <CourseFlag code={flag} className="h-6 w-9" />
-        </span>
-      )}
       <span
         className={`flex items-center gap-1 rounded-xl px-2 py-1 font-extrabold ${streakActive ? "text-streak" : "text-locked-dark"}`}
         title={streakActive ? "Streak extended today" : "Complete a lesson to extend your streak"}

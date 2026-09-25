@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
+
 import { Avatar } from "@/components/profile/Avatar";
+import { buttonClasses } from "@/components/ui/Button";
 import { CourseFlag } from "@/components/ui/CourseFlag";
 import { BoltIcon, CheckIcon, FlameIcon, GemIcon, LockIcon, TargetIcon, TrophyIcon } from "@/components/ui/icons";
 import { ErrorState, Skeleton } from "@/components/ui/States";
 import { api } from "@/lib/api";
-import type { Achievement, Profile } from "@/lib/types";
+import type { Achievement, CourseSummary, Profile } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 function formatDate(iso: string, options: Intl.DateTimeFormatOptions): string {
@@ -28,6 +31,9 @@ function ProfileHeader({ profile }: { profile: Profile }) {
           Learning {profile.course_title}
         </p>
       </div>
+      <Link href="/settings" className={buttonClasses("outline", "sm:ml-auto")}>
+        Edit profile
+      </Link>
     </header>
   );
 }
@@ -36,6 +42,47 @@ interface Stat {
   label: string;
   value: string;
   icon: React.ReactNode;
+}
+
+function LanguageList({ courses }: { courses: CourseSummary[] }) {
+  return (
+    <section aria-labelledby="languages-heading">
+      <h2 id="languages-heading" className="mb-3 text-xl font-extrabold">
+        Languages
+      </h2>
+      <ul className="grid gap-3 sm:grid-cols-2">
+        {courses.map((course) => (
+          <li
+            key={course.id}
+            className={`flex items-center gap-3 rounded-2xl border-2 p-4 ${course.is_active ? "border-secondary bg-secondary-light" : "border-line"}`}
+          >
+            <CourseFlag code={course.language_code} emoji={course.flag_emoji} className="h-8 w-12" />
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-2 font-extrabold">
+                {course.title}
+                {course.is_active && (
+                  <span className="rounded-lg bg-secondary px-2 py-0.5 text-xs text-white uppercase">Learning now</span>
+                )}
+              </p>
+              <div
+                className="mt-2 h-2.5 overflow-hidden rounded-full bg-line"
+                role="progressbar"
+                aria-label={`${course.title} progress`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={course.progress}
+              >
+                <div className="h-full rounded-full bg-primary" style={{ width: `${course.progress}%` }} />
+              </div>
+              <p className="mt-1 text-xs font-bold text-muted">
+                {course.lessons_completed}/{course.lessons_total} lessons · {course.progress}%
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
 function statsFor(profile: Profile): Stat[] {
@@ -98,7 +145,7 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
       >
         <span className={unlocked ? "" : "opacity-40"}>{achievement.icon}</span>
         {!unlocked && (
-          <span className="absolute -right-1 -bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-locked-dark text-white">
+          <span className="absolute -right-1 -bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-card bg-locked-dark text-white">
             <LockIcon className="h-4 w-4" />
           </span>
         )}
@@ -189,6 +236,7 @@ export default function ProfilePage() {
         <div className="flex animate-fade-in flex-col gap-8">
           <ProfileHeader profile={profile} />
           <StatGrid profile={profile} />
+          <LanguageList courses={profile.courses} />
           <AchievementGrid achievements={profile.achievements} />
         </div>
       )}

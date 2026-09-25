@@ -1,4 +1,4 @@
-// "Pico", Habla's original parrot mascot, drawn from simple shapes.
+// "Pico", the app's original parrot mascot, drawn from simple shapes.
 
 type Mood = "happy" | "cheer" | "sad";
 

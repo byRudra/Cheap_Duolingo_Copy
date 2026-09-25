@@ -8,23 +8,29 @@ from typing import Any
 from app.errors import AppError
 from app.models import ExerciseType
 
-_PUNCTUATION = re.compile(r"[.,!?¿¡]")
+# Sentence punctuation incl. the Gurmukhi danda (U+0964) and double danda (U+0965).
+_PUNCTUATION = re.compile("[.,!?¿¡%s%s]" % (chr(0x0964), chr(0x0965)))
 _WHITESPACE = re.compile(r"\s+")
+# Combining Diacritical Marks block: the accents of Latin-script languages.
+# Other scripts' vowel signs (e.g. Gurmukhi matras) are spelling, not accents.
+_LATIN_ACCENTS = re.compile("[%s-%s]" % (chr(0x0300), chr(0x036F)))
 
 
 def normalize(text: str) -> str:
-    """lowercase → trim → collapse whitespace → strip ``.,!?¿¡``.
+    """lowercase → trim → collapse whitespace → strip ``.,!?¿¡।`` (hyphens → spaces).
 
     NFC first, so an accent typed as a combining mark (e.g. "o" + U+0301)
     compares equal to the precomposed "ó".
     """
-    text = _PUNCTUATION.sub("", unicodedata.normalize("NFC", text).lower())
+    text = unicodedata.normalize("NFC", text).lower().replace(chr(0x2019), "'")  # curly apostrophe
+    text = _PUNCTUATION.sub("", text).replace("-", " ")  # "parlez-vous" == "parlez vous"
     return _WHITESPACE.sub(" ", text).strip()
 
 
 def strip_accents(text: str) -> str:
-    decomposed = unicodedata.normalize("NFD", text)
-    return "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn")
+    """Remove Latin diacritics (é → e, ñ → n) and nothing else."""
+    stripped = _LATIN_ACCENTS.sub("", unicodedata.normalize("NFD", text))
+    return unicodedata.normalize("NFC", stripped)
 
 
 @dataclass(frozen=True)

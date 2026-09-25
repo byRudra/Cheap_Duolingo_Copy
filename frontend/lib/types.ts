@@ -3,12 +3,50 @@
 export type SkillState = "LOCKED" | "AVAILABLE" | "IN_PROGRESS" | "COMPLETED";
 export type LessonStatus = "LOCKED" | "AVAILABLE" | "COMPLETED";
 export type AttemptStatus = "IN_PROGRESS" | "COMPLETED" | "FAILED";
+export type AttemptMode = "LESSON" | "PRACTICE";
 export type ExerciseType =
   | "MULTIPLE_CHOICE"
   | "WORD_BANK"
   | "MATCH_PAIRS"
   | "FILL_BLANK"
   | "TYPE_ANSWER";
+
+// ── Courses ──────────────────────────────────────────────────────────────────
+
+export interface CourseBrief {
+  id: number;
+  title: string;
+  language_code: string;
+  flag_emoji: string;
+}
+
+export interface CourseSummary extends CourseBrief {
+  description: string;
+  is_active: boolean;
+  lessons_completed: number;
+  lessons_total: number;
+  progress: number;
+}
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+
+export const DAILY_GOAL_CHOICES = [10, 20, 30, 50] as const;
+
+export interface Settings {
+  display_name: string;
+  avatar_color: string;
+  daily_goal_xp: number;
+  sound_effects: boolean;
+  daily_reminder: boolean;
+  achievement_alerts: boolean;
+}
+
+export type SettingsUpdate = Partial<Settings>;
+
+export interface ResetResult {
+  scope: "course" | "demo";
+  message: string;
+}
 
 // ── /api/me ──────────────────────────────────────────────────────────────────
 
@@ -35,6 +73,8 @@ export interface Me {
   streak_extended_today: boolean;
   daily_goal: DailyGoal;
   today: string;
+  active_course: CourseBrief;
+  settings: Settings;
 }
 
 export interface RefillResult {
@@ -99,6 +139,9 @@ export interface LessonMeta {
   unit_title: string;
   unit_color: string;
   xp_reward: number;
+  course_id: number;
+  course_title: string;
+  language_code: string;
 }
 
 export interface MultipleChoicePayload {
@@ -143,6 +186,7 @@ export type AnswerPayload =
 
 export interface AttemptStart {
   attempt_id: number;
+  mode: AttemptMode;
   lesson: LessonMeta;
   exercises: Exercise[];
   hearts: number;
@@ -167,6 +211,9 @@ export interface AchievementBrief {
 export interface CompletionSummary {
   attempt_id: number;
   status: AttemptStatus;
+  mode: AttemptMode;
+  hearts: number;
+  hearts_restored: number;
   xp_earned: number;
   perfect: boolean;
   already_completed: boolean;
@@ -207,6 +254,7 @@ export interface Profile {
   course_title: string;
   course_flag: string;
   course_language_code: string;
+  courses: CourseSummary[];
   achievements: Achievement[];
 }
 

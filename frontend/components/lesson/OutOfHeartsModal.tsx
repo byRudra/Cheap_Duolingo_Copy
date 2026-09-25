@@ -60,9 +60,9 @@ export function OutOfHeartsModal({ onRefilled }: { onRefilled: () => void }) {
           {pending ? "Refilling…" : "Refill"} <GemIcon className="h-5 w-5" /> {cost}
         </Button>
         <p className="-mt-1 text-center text-sm font-bold text-muted">You have {gems} gems</p>
-        <Button variant="outline" fullWidth disabled title="Coming soon">
-          Practice · Coming soon
-        </Button>
+        <Link href="/practice" className={buttonClasses("outline", "w-full")}>
+          Practice to earn a heart
+        </Link>
         <Link href="/" className={buttonClasses("ghost", "w-full")}>
           Return home
         </Link>

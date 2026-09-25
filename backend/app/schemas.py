@@ -3,9 +3,9 @@
 from datetime import date, datetime, timezone
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, PlainSerializer
+from pydantic import BaseModel, Field, PlainSerializer, field_validator
 
-from app.models import AttemptStatus, ExerciseType
+from app.models import AttemptMode, AttemptStatus, ExerciseType
 
 
 def _utc_iso(value: datetime) -> str:
@@ -17,6 +17,79 @@ UTCDateTime = Annotated[datetime, PlainSerializer(_utc_iso, return_type=str)]
 
 SkillState = Literal["LOCKED", "AVAILABLE", "IN_PROGRESS", "COMPLETED"]
 LessonStatus = Literal["LOCKED", "AVAILABLE", "COMPLETED"]
+
+
+# ── Courses ──────────────────────────────────────────────────────────────────
+
+
+class CourseBrief(BaseModel):
+    id: int
+    title: str
+    language_code: str
+    flag_emoji: str
+
+
+class CourseSummary(CourseBrief):
+    description: str
+    is_active: bool
+    lessons_completed: int
+    lessons_total: int
+    progress: int
+
+
+class SetCourseIn(BaseModel):
+    course_id: int
+
+
+# ── Settings ─────────────────────────────────────────────────────────────────
+
+DAILY_GOAL_CHOICES = (10, 20, 30, 50)
+
+
+class SettingsOut(BaseModel):
+    display_name: str
+    avatar_color: str
+    daily_goal_xp: int
+    sound_effects: bool
+    daily_reminder: bool
+    achievement_alerts: bool
+
+
+class SettingsIn(BaseModel):
+    """Partial update: only the fields sent are changed."""
+
+    display_name: str | None = Field(default=None, min_length=1, max_length=30)
+    avatar_color: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    daily_goal_xp: int | None = None
+    sound_effects: bool | None = None
+    daily_reminder: bool | None = None
+    achievement_alerts: bool | None = None
+
+    @field_validator("display_name")
+    @classmethod
+    def _strip_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("Display name can't be empty.")
+        return value
+
+    @field_validator("daily_goal_xp")
+    @classmethod
+    def _goal_choice(cls, value: int | None) -> int | None:
+        if value is not None and value not in DAILY_GOAL_CHOICES:
+            raise ValueError(f"Daily goal must be one of {DAILY_GOAL_CHOICES}.")
+        return value
+
+
+class ResetIn(BaseModel):
+    scope: Literal["course", "demo"]
+
+
+class ResetOut(BaseModel):
+    scope: str
+    message: str
 
 
 # ── /api/me ──────────────────────────────────────────────────────────────────
@@ -45,6 +118,8 @@ class MeOut(BaseModel):
     streak_extended_today: bool
     daily_goal: DailyGoalOut
     today: date
+    active_course: CourseBrief
+    settings: SettingsOut
 
 
 class RefillOut(BaseModel):
@@ -113,6 +188,9 @@ class LessonMetaOut(BaseModel):
     unit_title: str
     unit_color: str
     xp_reward: int
+    course_id: int
+    course_title: str
+    language_code: str
 
 
 class ExerciseOut(BaseModel):
@@ -126,6 +204,7 @@ class ExerciseOut(BaseModel):
 
 class AttemptStartOut(BaseModel):
     attempt_id: int
+    mode: AttemptMode
     lesson: LessonMetaOut
     exercises: list[ExerciseOut]
     hearts: int
@@ -179,6 +258,9 @@ class AchievementBrief(BaseModel):
 class CompletionSummary(BaseModel):
     attempt_id: int
     status: AttemptStatus
+    mode: AttemptMode
+    hearts: int
+    hearts_restored: int
     xp_earned: int
     perfect: bool
     already_completed: bool
@@ -220,6 +302,7 @@ class ProfileOut(BaseModel):
     course_title: str
     course_flag: str
     course_language_code: str
+    courses: list[CourseSummary]
     achievements: list[AchievementOut]
 
 

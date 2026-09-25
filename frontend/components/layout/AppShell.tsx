@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { APP_NAME, APP_WORDMARK } from "@/lib/brand";
+
 import { Mascot } from "../Mascot";
 import { HomeIcon, SettingsIcon, TrophyIcon, UserIcon } from "../ui/icons";
+import { ThemeToggle } from "../ui/ThemeToggle";
+import { CourseSwitcher } from "./CourseSwitcher";
 import { StatPills } from "./StatPills";
 
 const NAV = [
@@ -25,9 +29,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen lg:pl-64">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r-2 border-line px-4 py-6 lg:flex">
-        <Link href="/" className="mb-8 flex items-center gap-2 px-3" aria-label="Habla home">
+        <Link href="/" className="mb-8 flex items-center gap-2 px-3" aria-label={`${APP_NAME} home`}>
           <Mascot className="h-11 w-11" />
-          <span className="text-3xl font-black tracking-tight text-primary">habla</span>
+          <span className="text-3xl font-black tracking-tight text-primary">{APP_WORDMARK}</span>
         </Link>
         <nav aria-label="Main" className="flex flex-col gap-2">
           {NAV.map(({ href, label, Icon }) => {
@@ -49,14 +53,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+        <div className="mt-auto flex flex-col gap-2 px-1">
+          <p className="px-2 text-xs font-black tracking-wide text-muted uppercase">Theme</p>
+          <ThemeToggle compact />
+        </div>
       </aside>
 
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b-2 border-line bg-white/95 px-4 backdrop-blur lg:hidden">
-        <Link href="/" className="flex items-center gap-1" aria-label="Habla home">
-          <Mascot className="h-9 w-9" />
-          <span className="text-xl font-black text-primary">habla</span>
-        </Link>
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b-2 border-line bg-card/95 px-4 backdrop-blur lg:hidden">
+        <div className="flex items-center gap-1">
+          <Link href="/" aria-label={`${APP_NAME} home`} className="grid h-11 w-11 place-items-center">
+            <Mascot className="h-9 w-9" />
+          </Link>
+          <CourseSwitcher />
+        </div>
         <StatPills />
       </header>
 
@@ -65,7 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile bottom tabs */}
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-stretch justify-around border-t-2 border-line bg-white lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-stretch justify-around border-t-2 border-line bg-card lg:hidden"
       >
         {NAV.map(({ href, label, Icon }) => {
           const active = isActive(pathname, href);

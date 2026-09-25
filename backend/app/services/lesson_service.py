@@ -6,7 +6,7 @@ idempotent). The client never sends XP; everything is computed here.
 
 from datetime import datetime
 
-from sqlalchemy import func, select, update
+from sqlalchemy import exists, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -15,12 +15,14 @@ from app.config import Settings, settings
 from app.errors import AppError, not_found
 from app.models import (
     AttemptAnswer,
+    AttemptMode,
     AttemptStatus,
     DailyActivity,
     Exercise,
     Lesson,
     LessonAttempt,
     User,
+    UserLessonProgress,
 )
 from app.schemas import (
     AchievementBrief,
@@ -56,6 +58,7 @@ def lesson_meta(db: Session, user: User, lesson_id: int, cfg: Settings = setting
     lesson = _get_lesson(db, lesson_id)
     status = progress_service.lesson_status(db, user, lesson)
     skill = lesson.skill
+    course = skill.unit.course
     is_practice = status == "COMPLETED"
     return LessonMetaOut(
         id=lesson.id,
@@ -71,6 +74,9 @@ def lesson_meta(db: Session, user: User, lesson_id: int, cfg: Settings = setting
         unit_title=skill.unit.title,
         unit_color=skill.unit.color,
         xp_reward=cfg.PRACTICE_XP if is_practice else cfg.BASE_LESSON_XP,
+        course_id=course.id,
+        course_title=course.title,
+        language_code=course.language_code,
     )
 
 
@@ -85,13 +91,46 @@ def start_attempt(
     if user.hearts <= 0:
         raise AppError(409, "OUT_OF_HEARTS", "You're out of hearts.")
 
-    attempt = LessonAttempt(user_id=user.id, lesson_id=lesson_id, started_at=now)
+    return _create_attempt(db, user, meta, AttemptMode.LESSON, now, cfg)
+
+
+def start_practice(db: Session, user: User, now: datetime, cfg: Settings = settings) -> AttemptStartOut:
+    """Heart practice: replay the learner's weakest completed lesson in the active course.
+
+    Allowed at 0 hearts; mistakes cost nothing and completion restores one heart.
+    """
+    course = progress_service.active_course(db, user)
+    lessons = [l for u in course.units for s in u.skills for l in s.lessons]
+    progress = {
+        p.lesson_id: p
+        for p in db.scalars(
+            select(UserLessonProgress).where(
+                UserLessonProgress.user_id == user.id,
+                UserLessonProgress.lesson_id.in_([l.id for l in lessons]),
+            )
+        )
+    }
+    if progress:
+        # Most mistakes first, then the one completed longest ago.
+        weakest = min(progress.values(), key=lambda p: (-p.best_mistakes, p.completed_at))
+        lesson_id = weakest.lesson_id
+    else:
+        lesson_id = lessons[0].id
+    gamification.apply_heart_regen(user, now, cfg)
+    return _create_attempt(db, user, lesson_meta(db, user, lesson_id, cfg), AttemptMode.PRACTICE, now, cfg)
+
+
+def _create_attempt(
+    db: Session, user: User, meta: LessonMetaOut, mode: AttemptMode, now: datetime, cfg: Settings
+) -> AttemptStartOut:
+    attempt = LessonAttempt(user_id=user.id, lesson_id=meta.id, started_at=now, mode=mode)
     db.add(attempt)
     db.commit()
 
-    lesson = _get_lesson(db, lesson_id)
+    lesson = _get_lesson(db, meta.id)
     return AttemptStartOut(
         attempt_id=attempt.id,
+        mode=mode,
         lesson=meta,
         exercises=[
             ExerciseOut(id=ex.id, type=ex.type, prompt=ex.prompt, payload=ex.payload)
@@ -155,6 +194,7 @@ def submit_answer(
     gamification.apply_heart_regen(user, now, cfg)
     if not result.correct:
         attempt.mistakes += 1
+    if not result.correct and attempt.mode is AttemptMode.LESSON:
         gamification.lose_heart(user, now, cfg)
         if user.hearts == 0:
             attempt.status = AttemptStatus.FAILED
@@ -197,23 +237,33 @@ def _today_activity(db: Session, user: User, today) -> DailyActivity | None:
     ).first()
 
 
-def _already_completed_summary(
-    db: Session, user: User, attempt: LessonAttempt, now: datetime
+def _neutral_summary(
+    db: Session,
+    user: User,
+    attempt: LessonAttempt,
+    now: datetime,
+    *,
+    already_completed: bool,
+    hearts_restored: int = 0,
+    cfg: Settings = settings,
 ) -> CompletionSummary:
-    """Replay of /complete: report the stored result, award nothing new."""
+    """Summary with no new events: a replayed /complete or a heart-practice finish."""
     today = local_date(now)
     streak = gamification.display_streak(user.streak, user.last_activity_date, today)
     activity = _today_activity(db, user, today)
-    view = progress_service.skill_views_for_user(db, user, progress_service.get_course(db))[
-        attempt.lesson.skill_id
-    ]
+    course = progress_service.course_of_lesson(db, attempt.lesson)
+    view = progress_service.skill_views_for_user(db, user, course)[attempt.lesson.skill_id]
     total = len(attempt.lesson.exercises)
+    hearts, _ = gamification.effective_hearts(user, now, cfg)
     return CompletionSummary(
         attempt_id=attempt.id,
         status=attempt.status,
+        mode=attempt.mode,
+        hearts=hearts,
+        hearts_restored=hearts_restored,
         xp_earned=attempt.xp_awarded,
         perfect=attempt.mistakes == 0,
-        already_completed=True,
+        already_completed=already_completed,
         mistakes=attempt.mistakes,
         accuracy=_accuracy(total, attempt.mistakes),
         total_xp=user.xp,
@@ -234,11 +284,13 @@ def complete_attempt(
 ) -> CompletionSummary:
     attempt = _get_attempt(db, user, attempt_id)
     if attempt.status == AttemptStatus.COMPLETED:
-        return _already_completed_summary(db, user, attempt, now)
+        return _neutral_summary(db, user, attempt, now, already_completed=True, cfg=cfg)
     if attempt.status == AttemptStatus.FAILED:
         raise AppError(409, "ATTEMPT_FAILED", "This attempt ended when you ran out of hearts.")
 
     lesson = attempt.lesson
+    if attempt.mode is AttemptMode.LESSON and progress_service.lesson_status(db, user, lesson) == "LOCKED":
+        raise AppError(409, "LESSON_LOCKED", "This lesson is locked again; start it once it's unlocked.")
     total = len(lesson.exercises)
     answered = db.scalar(
         select(func.count()).select_from(AttemptAnswer).where(AttemptAnswer.attempt_id == attempt.id)
@@ -260,15 +312,40 @@ def complete_attempt(
         db.refresh(attempt)
         db.refresh(user)
         if attempt.status == AttemptStatus.COMPLETED:
-            return _already_completed_summary(db, user, attempt, now)
+            return _neutral_summary(db, user, attempt, now, already_completed=True, cfg=cfg)
         raise AppError(409, "ATTEMPT_NOT_IN_PROGRESS", "This lesson attempt has already ended.")
     db.refresh(attempt)
+
+    if attempt.mode is AttemptMode.PRACTICE:
+        # Heart practice: +1 heart (up to the max), no XP, streak or progress.
+        gamification.apply_heart_regen(user, now, cfg)
+        restored = 1 if user.hearts < cfg.MAX_HEARTS else 0
+        user.hearts += restored
+        attempt.xp_awarded = 0
+        db.commit()
+        return _neutral_summary(
+            db, user, attempt, now, already_completed=False, hearts_restored=restored, cfg=cfg
+        )
 
     today = local_date(now)
 
     # Progress + unlocks
     update_info = progress_service.record_lesson_completion(db, user, lesson, attempt.mistakes, now)
-    xp = gamification.lesson_xp(update_info.first_completion, attempt.mistakes, cfg)
+    # A lesson completed before a course reset still counts as a replay, so
+    # resetting can't be used to farm first-completion XP.
+    completed_before = db.scalar(
+        select(
+            exists().where(
+                LessonAttempt.user_id == user.id,
+                LessonAttempt.lesson_id == lesson.id,
+                LessonAttempt.mode == AttemptMode.LESSON,
+                LessonAttempt.status == AttemptStatus.COMPLETED,
+                LessonAttempt.id != attempt.id,
+            )
+        )
+    )
+    first_completion = update_info.first_completion and not completed_before
+    xp = gamification.lesson_xp(first_completion, attempt.mistakes, cfg)
 
     # Streak
     streak_before = gamification.display_streak(user.streak, user.last_activity_date, today)
@@ -310,6 +387,9 @@ def complete_attempt(
     return CompletionSummary(
         attempt_id=attempt.id,
         status=attempt.status,
+        mode=attempt.mode,
+        hearts=gamification.effective_hearts(user, now, cfg)[0],
+        hearts_restored=0,
         xp_earned=xp,
         perfect=attempt.mistakes == 0,
         already_completed=False,

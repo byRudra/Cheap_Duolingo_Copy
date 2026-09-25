@@ -7,11 +7,13 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Achievement,
+    Course,
     Exercise,
     ExerciseType,
     Lesson,
     LessonAttempt,
     Skill,
+    Unit,
     User,
     UserAchievement,
 )
@@ -32,8 +34,14 @@ def set_user(db: Session, username: str = DEMO, **fields: Any) -> User:
     return user
 
 
-def skill_by_order(db: Session, order_index: int) -> Skill:
-    return db.scalars(select(Skill).where(Skill.order_index == order_index)).one()
+def skill_by_order(db: Session, order_index: int, language_code: str = "es") -> Skill:
+    """A skill by its course-wide order (skill order restarts in every course)."""
+    return db.scalars(
+        select(Skill)
+        .join(Unit, Skill.unit_id == Unit.id)
+        .join(Course, Unit.course_id == Course.id)
+        .where(Skill.order_index == order_index, Course.language_code == language_code)
+    ).one()
 
 
 def lesson_ids(db: Session, skill_order: int) -> list[int]:

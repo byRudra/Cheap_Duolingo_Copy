@@ -198,3 +198,70 @@ def test_invalid_payload_raises_invalid_answer(kind, solution, payload):
         check_answer(kind, solution, payload)
     assert info.value.status_code == 422
     assert info.value.code == "INVALID_ANSWER"
+
+
+# ── non-Latin scripts and apostrophes ────────────────────────────────────────
+
+CURLY = chr(0x2019)  # ’
+
+
+def test_strip_accents_removes_only_latin_combining_marks():
+    assert strip_accents("ñ ü ç à è ô") == "n u c a e o"
+    assert strip_accents("français") == "francais"
+
+
+@pytest.mark.parametrize("word", ["ਸੁਣ", "ਸਤ ਸ੍ਰੀ ਅਕਾਲ", "ਧੰਨਵਾਦ", "ਮੈਂ", "ਪੰਜਾਬੀ", "ਕਿਵੇਂ"])
+def test_strip_accents_preserves_gurmukhi_vowel_signs(word):
+    assert strip_accents(word) == word
+    assert strip_accents(normalize(word)) == normalize(word)
+
+
+def test_gurmukhi_exact_answer_is_correct():
+    result = check_answer(TA, {"accepted": ["ਸੁਣ"]}, {"text": " ਸੁਣ "})
+    assert result.correct and result.note is None
+
+
+@pytest.mark.parametrize("kind", [TA, WB])
+def test_gurmukhi_missing_vowel_sign_is_wrong_not_an_accent_note(kind):
+    missing = "ਸਣ"  # "ਸੁਣ" without the ੁ vowel sign
+    payload = {"text": missing} if kind is TA else {"tiles": [missing]}
+    result = check_answer(kind, {"accepted": ["ਸੁਣ"]}, payload)
+    assert not result.correct
+    assert result.note is None
+    assert result.correct_answer == "ਸੁਣ"
+
+
+def test_gurmukhi_word_bank_order_and_nasal_sign():
+    solution = {"accepted": ["ਮੈਂ ਠੀਕ ਹਾਂ"]}
+    assert check_answer(WB, solution, {"tiles": ["ਮੈਂ", "ਠੀਕ", "ਹਾਂ"]}).correct
+    assert not check_answer(WB, solution, {"tiles": ["ਠੀਕ", "ਮੈਂ", "ਹਾਂ"]}).correct
+    dropped_bindi = check_answer(WB, solution, {"tiles": ["ਮੈ", "ਠੀਕ", "ਹਾ"]})
+    assert not dropped_bindi.correct and dropped_bindi.note is None
+
+
+def test_normalize_maps_curly_apostrophe():
+    assert normalize(f"Je m{CURLY}appelle") == "je m'appelle"
+    assert normalize(f"I{CURLY}m") == normalize("I'm") == "i'm"
+
+
+@pytest.mark.parametrize("kind", [TA, WB])
+def test_curly_and_straight_apostrophes_match_both_ways(kind):
+    def submit(text: str):
+        return {"text": text} if kind is TA else {"tiles": text.split()}
+
+    straight = {"accepted": ["Je m'appelle Marie"]}
+    curly = {"accepted": [f"Je m{CURLY}appelle Marie"]}
+    for solution, text in [(straight, f"je m{CURLY}appelle Marie"), (curly, "je m'appelle marie")]:
+        result = check_answer(kind, solution, submit(text))
+        assert result.correct and result.note is None
+
+
+def test_curly_apostrophe_with_missing_accent_gets_note():
+    result = check_answer(TA, {"accepted": ["J'ai été"]}, {"text": f"J{CURLY}ai ete"})
+    assert result.correct
+    assert result.note == "Watch your accents: J'ai été"
+
+
+@pytest.mark.parametrize("kind", [MC, FB])
+def test_choice_matches_curly_apostrophe(kind):
+    assert check_answer(kind, {"answer": "l'eau"}, {"answer": f"l{CURLY}eau"}).correct

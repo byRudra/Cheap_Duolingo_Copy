@@ -6,7 +6,7 @@ import type { CompletionSummary } from "@/lib/types";
 
 import { Mascot } from "../Mascot";
 import { Button } from "../ui/Button";
-import { BoltIcon, FlameIcon, TargetIcon } from "../ui/icons";
+import { BoltIcon, FlameIcon, HeartIcon, TargetIcon } from "../ui/icons";
 import { ProgressRing } from "../ui/ProgressRing";
 
 const CONFETTI_COLORS = ["#46b936", "#1fa5ea", "#ffb91f", "#ff4b6e", "#8b5cf6", "#ff8a1f"];
@@ -79,17 +79,26 @@ function StatTile({
   );
 }
 
-export function LessonComplete({ summary, onContinue }: { summary: CompletionSummary; onContinue: () => void }) {
+export function LessonComplete({
+  summary,
+  onContinue,
+  showAchievements = true,
+}: {
+  summary: CompletionSummary;
+  onContinue: () => void;
+  showAchievements?: boolean;
+}) {
   const xp = useCountUp(summary.xp_earned);
   const goalPct = Math.round((Math.min(summary.daily_goal.earned, summary.daily_goal.goal) / summary.daily_goal.goal) * 100);
   const celebrate = !summary.already_completed;
+  const practice = summary.mode === "PRACTICE";
 
   return (
     <div className="flex min-h-screen flex-col">
       {celebrate && <Confetti />}
 
       {/* Achievement toasts */}
-      {summary.new_achievements.length > 0 && (
+      {showAchievements && summary.new_achievements.length > 0 && (
         <div className="fixed top-4 right-4 left-4 z-50 flex flex-col items-end gap-2 sm:left-auto" role="status">
           {summary.new_achievements.map((a, i) => (
             <div
@@ -101,7 +110,7 @@ export function LessonComplete({ summary, onContinue }: { summary: CompletionSum
                 {a.icon}
               </span>
               <div>
-                <p className="text-xs font-black tracking-wide text-gold-dark uppercase">Achievement unlocked</p>
+                <p className="text-xs font-black tracking-wide text-gold-ink uppercase">Achievement unlocked</p>
                 <p className="font-extrabold">{a.title}</p>
               </div>
             </div>
@@ -112,11 +121,25 @@ export function LessonComplete({ summary, onContinue }: { summary: CompletionSum
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center gap-6 px-4 py-10 text-center">
         <Mascot mood="cheer" className="h-32 w-32 animate-bounce-soft" />
         <div>
-          <h1 className="text-3xl font-black text-gold-dark">
-            {summary.already_completed ? "Lesson already completed" : summary.perfect ? "Perfect lesson!" : "Lesson complete!"}
+          <h1 className="text-3xl font-black text-gold-ink">
+            {summary.already_completed
+              ? "Lesson already completed"
+              : practice
+                ? "Practice complete!"
+                : summary.perfect
+                  ? "Perfect lesson!"
+                  : "Lesson complete!"}
           </h1>
-          {summary.perfect && !summary.already_completed && (
-            <p className="mt-2 inline-block animate-pop rounded-full bg-gold-light px-3 py-1 text-sm font-black text-gold-dark">
+          {practice && !summary.already_completed && (
+            <p className="mt-2 inline-flex animate-pop items-center gap-2 rounded-full bg-danger-light px-3 py-1 font-black text-heart">
+              <HeartIcon className="h-5 w-5" />
+              {summary.hearts_restored > 0
+                ? `+${summary.hearts_restored} heart · you have ${summary.hearts}`
+                : `Hearts already full (${summary.hearts})`}
+            </p>
+          )}
+          {summary.perfect && !summary.already_completed && !practice && (
+            <p className="mt-2 inline-block animate-pop rounded-full bg-gold-light px-3 py-1 text-sm font-black text-gold-ink">
               🎯 No mistakes · perfect bonus
             </p>
           )}

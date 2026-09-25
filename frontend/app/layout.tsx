@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 
 import { UserStatsProvider } from "@/context/UserStatsContext";
+import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
 import "./globals.css";
 
@@ -12,17 +14,24 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "Habla · Learn Spanish",
-  description: "Bite-sized, gamified Spanish lessons with streaks, hearts and XP.",
+  title: { default: `${APP_NAME} · Learn a language`, template: `%s · ${APP_NAME}` },
+  description: APP_TAGLINE,
 };
 
 export const viewport: Viewport = {
-  themeColor: "#46b936",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#46b936" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f1b21" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${nunito.variable} h-full`}>
+    // The inline script sets data-theme before paint, so React must not fight it.
+    <html lang="en" className={`${nunito.variable} h-full`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full">
         <UserStatsProvider>{children}</UserStatsProvider>
       </body>

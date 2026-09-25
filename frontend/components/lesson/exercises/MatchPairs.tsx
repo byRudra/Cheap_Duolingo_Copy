@@ -13,7 +13,7 @@ type Side = "left" | "right";
  * the client anyway). A mismatch shakes both cards and costs no heart; once
  * every pair is matched the exercise submits `{ completed: true }` itself.
  */
-export function MatchPairs({ exercise, disabled, onAutoSubmit }: ExerciseProps<"MATCH_PAIRS">) {
+export function MatchPairs({ exercise, language, disabled, onAutoSubmit }: ExerciseProps<"MATCH_PAIRS">) {
   const { pairs } = exercise.payload;
   const leftOrder = useMemo(() => shuffledIndices(pairs.length, exercise.id * 7919 + 1), [pairs.length, exercise.id]);
   const rightOrder = useMemo(() => shuffledIndices(pairs.length, exercise.id * 104729 + 3), [pairs.length, exercise.id]);
@@ -46,15 +46,15 @@ export function MatchPairs({ exercise, disabled, onAutoSubmit }: ExerciseProps<"
   function cardClass(side: Side, pairIndex: number): string {
     const base =
       "min-h-14 w-full rounded-2xl border-2 border-b-4 px-3 py-3 text-lg font-bold transition-all duration-300 disabled:cursor-default";
-    if (matched.has(pairIndex)) return `${base} border-primary/40 bg-primary-light text-primary-dark opacity-50`;
-    if (wrong && wrong[side] === pairIndex) return `${base} border-danger bg-danger-light text-danger-dark animate-shake`;
-    if (selected[side] === pairIndex) return `${base} border-secondary bg-secondary-light text-secondary-dark`;
-    return `${base} border-line bg-white text-ink hover:bg-surface`;
+    if (matched.has(pairIndex)) return `${base} border-primary/40 bg-primary-light text-primary-ink opacity-50`;
+    if (wrong && wrong[side] === pairIndex) return `${base} border-danger bg-danger-light text-danger-ink animate-shake`;
+    if (selected[side] === pairIndex) return `${base} border-secondary bg-secondary-light text-secondary-ink`;
+    return `${base} border-line bg-card text-ink hover:bg-surface`;
   }
 
   function column(side: Side, order: number[]) {
     return (
-      <ul className="flex flex-col gap-3" aria-label={side === "left" ? "Spanish" : "English"}>
+      <ul className="flex flex-col gap-3" aria-label={side === "left" ? language.name : "Matches"}>
         {order.map((pairIndex) => {
           const label = pairs[pairIndex][side];
           const isMatched = matched.has(pairIndex);

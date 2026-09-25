@@ -6,6 +6,7 @@ import { useEffect, useEffectEvent, useReducer, useState } from "react";
 
 import { useUserStats } from "@/context/UserStatsContext";
 import { api, errorMessage, isApiError } from "@/lib/api";
+import { playSound } from "@/lib/sound";
 import type { AnswerPayload, AnswerResult, AttemptStart, CompletionSummary, LessonMeta } from "@/lib/types";
 
 import { Mascot } from "../Mascot";
@@ -123,10 +124,19 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-export function LessonPlayer({ lessonId }: { lessonId: number }) {
+interface LessonPlayerProps {
+  /** The lesson to play. Omit with `practice` for heart practice (server picks the lesson). */
+  lessonId?: number;
+  /** Heart practice: mistakes are free and finishing restores a heart. */
+  practice?: boolean;
+}
+
+export function LessonPlayer({ lessonId, practice = false }: LessonPlayerProps) {
   const router = useRouter();
   const { me, refresh } = useUserStats();
-  const [state, dispatch] = useReducer(reducer, initialState);
+  // Practice has no lesson to preview: it opens straight on its own intro.
+  const [state, dispatch] = useReducer(reducer, practice ? { ...initialState, phase: "INTRO" } : initialState);
+  const soundOn = me?.settings.sound_effects ?? false;
   const [confirmQuit, setConfirmQuit] = useState(false);
   const [loadVersion, setLoadVersion] = useState(0);
 
@@ -137,6 +147,7 @@ export function LessonPlayer({ lessonId }: { lessonId: number }) {
   const inProgress = phase === "ANSWERING" || phase === "CHECKING" || phase === "FEEDBACK";
 
   useEffect(() => {
+    if (lessonId === undefined) return;
     let cancelled = false;
     api.lesson(lessonId).then(
       (loaded) => !cancelled && dispatch({ type: "META_LOADED", meta: loaded }),
@@ -150,7 +161,8 @@ export function LessonPlayer({ lessonId }: { lessonId: number }) {
   async function start() {
     dispatch({ type: "START" });
     try {
-      dispatch({ type: "STARTED", attempt: await api.startLesson(lessonId) });
+      const attempt = practice || lessonId === undefined ? await api.startPractice() : await api.startLesson(lessonId);
+      dispatch({ type: "STARTED", attempt });
     } catch (error) {
       if (isApiError(error, "OUT_OF_HEARTS")) {
         await refresh();
@@ -168,6 +180,7 @@ export function LessonPlayer({ lessonId }: { lessonId: number }) {
     try {
       const checked = await api.answer(attempt.attempt_id, exercise.id, submitted);
       dispatch({ type: "CHECKED", result: checked });
+      playSound(checked.correct ? "correct" : "wrong", soundOn);
       void refresh(); // hearts shown elsewhere come from the server
     } catch (error) {
       dispatch({ type: "CHECK_FAILED", error });
@@ -178,7 +191,9 @@ export function LessonPlayer({ lessonId }: { lessonId: number }) {
     if (!attempt) return;
     dispatch({ type: "SUBMIT" });
     try {
-      dispatch({ type: "COMPLETED", summary: await api.complete(attempt.attempt_id) });
+      const completed = await api.complete(attempt.attempt_id);
+      dispatch({ type: "COMPLETED", summary: completed });
+      playSound(completed.mode === "PRACTICE" && completed.hearts_restored > 0 ? "heart" : "complete", soundOn);
       void refresh();
     } catch (error) {
       dispatch({ type: "SUBMIT_FAILED", error });
@@ -232,7 +247,7 @@ export function LessonPlayer({ lessonId }: { lessonId: number }) {
     );
   }
 
-  if (phase === "LOAD_ERROR" || !meta) {
+  if (phase === "LOAD_ERROR" || (!meta && !practice)) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-4">
         <ErrorState error={state.error} onRetry={() => setLoadVersion((v) => v + 1)} title="Couldn't load this lesson" />
@@ -247,6 +262,7 @@ export function LessonPlayer({ lessonId }: { lessonId: number }) {
     return (
       <LessonComplete
         summary={summary}
+        showAchievements={me?.settings.achievement_alerts ?? true}
         onContinue={() => {
           void refresh();
           router.push("/");
@@ -254,6 +270,50 @@ export function LessonPlayer({ lessonId }: { lessonId: number }) {
       />
     );
   }
+
+  if (practice && (phase === "INTRO" || phase === "STARTING")) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <header className="mx-auto flex w-full max-w-3xl items-center px-4 pt-5">
+          <Link href="/" aria-label="Back to path" className="grid h-11 w-11 place-items-center rounded-xl text-muted hover:bg-surface">
+            <CloseIcon className="h-7 w-7" />
+          </Link>
+        </header>
+        <main className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center gap-5 px-4 py-8 text-center">
+          <Mascot mood="cheer" className="h-28 w-28" />
+          <div>
+            <p className="text-sm font-extrabold tracking-wide text-muted uppercase">
+              {me ? `${me.active_course.title} · ` : ""}Heart practice
+            </p>
+            <h1 className="mt-1 text-3xl font-black">Practice to earn a heart</h1>
+            <p className="mt-2 text-muted">
+              Review a lesson you&apos;ve already met. Mistakes don&apos;t cost hearts here, and finishing gives you
+              one heart back.
+            </p>
+          </div>
+          {me && (
+            <span className="flex items-center gap-1 rounded-xl bg-danger-light px-3 py-2 font-extrabold text-heart">
+              <HeartIcon className="h-5 w-5" /> {me.hearts} / {me.max_hearts} hearts
+            </span>
+          )}
+          {state.error !== null && (
+            <p role="alert" className="font-bold text-danger">
+              {errorMessage(state.error)}
+            </p>
+          )}
+        </main>
+        <footer className="border-t-2 border-line">
+          <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-5 sm:flex-row sm:justify-end sm:py-7">
+            <Button onClick={() => void start()} disabled={phase === "STARTING"} className="sm:min-w-44">
+              {phase === "STARTING" ? "Starting…" : "Start practice"}
+            </Button>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
+  if (!meta) return null;
 
   if (phase === "INTRO" || phase === "STARTING" || (phase === "OUT_OF_HEARTS" && !attempt)) {
     const locked = meta.status === "LOCKED";
@@ -282,7 +342,7 @@ export function LessonPlayer({ lessonId }: { lessonId: number }) {
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-3 font-extrabold">
-            <span className="flex items-center gap-1 rounded-xl bg-gold-light px-3 py-2 text-gold-dark">
+            <span className="flex items-center gap-1 rounded-xl bg-gold-light px-3 py-2 text-gold-ink">
               <BoltIcon className="h-5 w-5" /> +{meta.xp_reward} XP{meta.is_practice ? " (practice)" : ""}
             </span>
             {me && (
@@ -293,7 +353,7 @@ export function LessonPlayer({ lessonId }: { lessonId: number }) {
           </div>
           {meta.is_practice && <p className="text-sm text-muted">You&apos;ve completed this lesson. Replaying it earns practice XP.</p>}
           {!meta.is_practice && !locked && <p className="text-sm text-muted">Finish with no mistakes for a perfect bonus.</p>}
-          {state.notice && <p className="font-bold text-primary-dark">{state.notice}</p>}
+          {state.notice && <p className="font-bold text-primary-ink">{state.notice}</p>}
           {state.error !== null && (
             <p role="alert" className="font-bold text-danger">
               {errorMessage(state.error)}
@@ -344,6 +404,11 @@ export function LessonPlayer({ lessonId }: { lessonId: number }) {
             <div className="mx-2 mt-1 h-1 rounded-full bg-white/30" />
           </div>
         </div>
+        {attempt?.mode === "PRACTICE" && (
+          <span className="hidden rounded-lg bg-primary-light px-2 py-1 text-xs font-black text-primary-ink uppercase sm:inline">
+            Mistakes are free
+          </span>
+        )}
         <span className="flex items-center gap-1 text-lg font-black text-heart" aria-label={`${hearts ?? 0} hearts left`}>
           <HeartIcon key={hearts ?? 0} className="h-7 w-7 animate-pop" />
           {hearts ?? 0}
@@ -355,6 +420,7 @@ export function LessonPlayer({ lessonId }: { lessonId: number }) {
           <div key={exercise.id} className="animate-slide-in">
             <ExerciseRenderer
               exercise={exercise}
+              language={{ code: meta.language_code, name: meta.course_title }}
               disabled={phase !== "ANSWERING"}
               status={status}
               onAnswerChange={(next) => dispatch({ type: "ANSWER_CHANGED", answer: next })}

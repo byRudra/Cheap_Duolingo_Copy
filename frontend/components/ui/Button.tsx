@@ -7,7 +7,7 @@ const VARIANTS: Record<ButtonVariant, string> = {
   secondary: "bg-secondary border-secondary-dark text-white",
   danger: "bg-danger border-danger-dark text-white",
   gold: "bg-gold border-gold-dark text-white",
-  outline: "bg-white border-2 border-b-4 border-line text-secondary",
+  outline: "bg-card border-2 border-b-4 border-line text-secondary",
   ghost: "border-transparent bg-transparent text-muted hover:bg-surface",
 };
 

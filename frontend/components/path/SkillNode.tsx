@@ -60,9 +60,9 @@ export const SkillNode = forwardRef<HTMLDivElement, SkillNodeProps>(function Ski
   return (
     <div ref={ref} className="relative flex flex-col items-center" style={{ transform: `translateX(${offset}px)` }}>
       {isCurrent && !open && (
-        <div className="absolute -top-11 z-10 animate-bounce-soft rounded-xl border-2 border-line bg-white px-3 py-1.5 text-sm font-extrabold tracking-wide text-primary uppercase shadow-sm">
+        <div className="absolute -top-11 z-10 animate-bounce-soft rounded-xl border-2 border-line bg-card px-3 py-1.5 text-sm font-extrabold tracking-wide text-primary uppercase shadow-sm">
           {skill.state === "AVAILABLE" ? "Start" : "Continue"}
-          <span className="absolute -bottom-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-r-2 border-b-2 border-line bg-white" />
+          <span className="absolute -bottom-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-r-2 border-b-2 border-line bg-card" />
         </div>
       )}
 
@@ -88,12 +88,12 @@ export const SkillNode = forwardRef<HTMLDivElement, SkillNodeProps>(function Ski
             {skill.icon}
           </span>
           {locked && (
-            <span className="absolute -right-1 -bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-locked-dark text-white">
+            <span className="absolute -right-1 -bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-card bg-locked-dark text-white">
               <LockIcon className="h-4 w-4" />
             </span>
           )}
           {completed && (
-            <span className="absolute -right-1 -bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white bg-gold-dark text-white">
+            <span className="absolute -right-1 -bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-card bg-gold-dark text-white">
               <CheckIcon className="h-4 w-4" />
             </span>
           )}

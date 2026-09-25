@@ -11,6 +11,8 @@ interface UserStatsValue {
   loading: boolean;
   /** Re-read `/api/me`; call after answers (hearts) and lesson completion. */
   refresh: () => Promise<void>;
+  /** Replace the cached stats with a fresh server response (e.g. from PATCH /api/me/settings). */
+  replace: (next: Me) => void;
 }
 
 const UserStatsContext = createContext<UserStatsValue | null>(null);
@@ -59,7 +61,12 @@ export function UserStatsProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(timer);
   }, [me?.next_heart_at, refresh]);
 
-  const value = useMemo(() => ({ me, error, loading, refresh }), [me, error, loading, refresh]);
+  const replace = useCallback((next: Me) => {
+    setMe(next);
+    setError(null);
+  }, []);
+
+  const value = useMemo(() => ({ me, error, loading, refresh, replace }), [me, error, loading, refresh, replace]);
   return <UserStatsContext.Provider value={value}>{children}</UserStatsContext.Provider>;
 }
 

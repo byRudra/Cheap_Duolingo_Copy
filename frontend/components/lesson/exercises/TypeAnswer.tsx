@@ -4,9 +4,14 @@ import { useId, useRef, useState } from "react";
 
 import type { ExerciseProps } from "./types";
 
-const SPECIAL_CHARACTERS = ["á", "é", "í", "ó", "ú", "ñ", "ü", "¿", "¡"];
+/** On-screen keys for characters that are awkward to type on an English keyboard. */
+const SPECIAL_CHARACTERS: Record<string, string[]> = {
+  es: ["á", "é", "í", "ó", "ú", "ñ", "ü", "¿", "¡"],
+  fr: ["é", "è", "ê", "à", "â", "ç", "ô", "û", "ù", "î", "ï", "ë", "œ"],
+};
 
-export function TypeAnswer({ exercise, disabled, status, onAnswerChange }: ExerciseProps<"TYPE_ANSWER">) {
+export function TypeAnswer({ exercise, language, disabled, status, onAnswerChange }: ExerciseProps<"TYPE_ANSWER">) {
+  const specialCharacters = SPECIAL_CHARACTERS[language.code] ?? [];
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
@@ -40,7 +45,7 @@ export function TypeAnswer({ exercise, disabled, status, onAnswerChange }: Exerc
       <h1 className="text-2xl font-black sm:text-3xl">{exercise.prompt}</h1>
       <div className="flex flex-col gap-2">
         <label htmlFor={inputId} className="font-bold text-muted">
-          Your answer in Spanish
+          Your answer in {language.name}
         </label>
         <input
           ref={inputRef}
@@ -52,26 +57,28 @@ export function TypeAnswer({ exercise, disabled, status, onAnswerChange }: Exerc
           autoComplete="off"
           autoCapitalize="off"
           spellCheck={false}
-          lang="es"
-          placeholder={exercise.payload.placeholder ?? "Type in Spanish"}
+          lang={language.code}
+          placeholder={exercise.payload.placeholder ?? `Type in ${language.name}`}
           onChange={(event) => update(event.target.value)}
           className={`min-h-14 w-full rounded-2xl border-2 px-4 text-xl font-bold outline-none transition-colors ${tone}`}
         />
       </div>
+      {specialCharacters.length > 0 && (
       <div className="flex flex-wrap gap-2" role="group" aria-label="Insert special character">
-        {SPECIAL_CHARACTERS.map((char) => (
+        {specialCharacters.map((char) => (
           <button
             key={char}
             type="button"
             disabled={disabled}
             onClick={() => insert(char)}
             aria-label={`Insert ${char}`}
-            className="grid h-11 min-w-11 place-items-center rounded-xl border-2 border-b-4 border-line bg-white text-lg font-bold hover:bg-surface"
+            className="grid h-11 min-w-11 place-items-center rounded-xl border-2 border-b-4 border-line bg-card text-lg font-bold hover:bg-surface"
           >
             {char}
           </button>
         ))}
       </div>
+      )}
     </div>
   );
 }

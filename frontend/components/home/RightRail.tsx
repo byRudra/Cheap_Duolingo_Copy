@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { useUserStats } from "@/context/UserStatsContext";
 import { api, errorMessage } from "@/lib/api";
 
+import { CourseSwitcher } from "../layout/CourseSwitcher";
 import { StatPills } from "../layout/StatPills";
-import { Button } from "../ui/Button";
+import { Button, buttonClasses } from "../ui/Button";
 import { Countdown } from "../ui/Countdown";
 import { FlameIcon, GemIcon, HeartIcon } from "../ui/icons";
 import { ProgressRing } from "../ui/ProgressRing";
@@ -108,9 +110,14 @@ export function HeartsCard() {
         ) : null}
       </p>
       {!full && (
-        <Button variant="secondary" fullWidth disabled={pending || !canAfford} onClick={refill}>
-          Refill <GemIcon className="h-5 w-5" /> {me.refill_cost}
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button variant="secondary" fullWidth disabled={pending || !canAfford} onClick={refill}>
+            Refill <GemIcon className="h-5 w-5" /> {me.refill_cost}
+          </Button>
+          <Link href="/practice" className={buttonClasses("outline", "w-full")}>
+            Practice to earn a heart
+          </Link>
+        </div>
       )}
       {!full && !canAfford && <p className="mt-2 text-sm text-muted">Not enough gems for a refill.</p>}
       {error && (
@@ -122,11 +129,12 @@ export function HeartsCard() {
   );
 }
 
-export function RightRail({ flag }: { flag?: string }) {
+export function RightRail() {
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex justify-center">
-        <StatPills flag={flag} />
+      <div className="flex items-center justify-between">
+        <CourseSwitcher align="left" />
+        <StatPills />
       </div>
       <StreakCard />
       <DailyGoalCard />

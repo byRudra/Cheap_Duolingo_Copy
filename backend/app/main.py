@@ -13,7 +13,7 @@ from app.errors import AppError
 from app.routers import course, lessons, me, social
 
 
-logger = logging.getLogger("habla")
+logger = logging.getLogger("app")
 
 
 @asynccontextmanager
@@ -29,7 +29,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Habla API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title=f"{settings.APP_NAME} API", version="1.1.0", lifespan=lifespan)
 
 
 def _error(status_code: int, code: str, message: str) -> JSONResponse:
@@ -56,7 +56,7 @@ async def unhandled_error_middleware(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type"],
 )
 

@@ -21,6 +21,8 @@ from app.models import (
     UserLessonProgress,
     UserSkillProgress,
 )
+from app.content import COURSES
+from app.content.builders import validate_course
 from app.seed import is_seeded, seed
 from app.services import progress_service as ps
 from app.services.answer_check import normalize
@@ -43,9 +45,45 @@ def count(db, model) -> int:
 # ── course structure ─────────────────────────────────────────────────────────
 
 
-def test_course_structure(seeded_db):
-    db = seeded_db
-    course = db.scalars(select(Course)).one()
+def courses_in_db(db) -> list[Course]:
+    return db.scalars(select(Course).order_by(Course.id)).all()
+
+
+def course_exercises(course: Course) -> list[Exercise]:
+    return [ex for u in course.units for s in u.skills for l in s.lessons for ex in l.exercises]
+
+
+def test_every_registered_course_is_seeded_in_order(seeded_db):
+    rows = courses_in_db(seeded_db)
+    assert len(rows) == len(COURSES) >= 1
+    for course, data in zip(rows, COURSES):
+        assert (course.title, course.language_code, course.flag_emoji, course.description) == (
+            data["title"], data["language_code"], data["flag_emoji"], data["description"]
+        )
+    assert len({c.language_code for c in rows}) == len(rows)
+
+
+def test_every_course_tree_matches_its_content_module(seeded_db):
+    for course, data in zip(courses_in_db(seeded_db), COURSES):
+        assert [u.title for u in course.units] == [u["title"] for u in data["units"]]
+        assert [u.order_index for u in course.units] == list(range(1, len(data["units"]) + 1))
+        expected_skills = [s["title"] for u in data["units"] for s in u["skills"]]
+        skills = ps.ordered_skills(course)
+        assert [s.title for s in skills] == expected_skills, course.title
+        # Skill order is course-wide and restarts at 1 in every course.
+        assert [s.order_index for s in skills] == list(range(1, len(skills) + 1)), course.title
+        expected_lessons = [
+            (title, len(exs)) for u in data["units"] for s in u["skills"] for title, exs in s["lessons"]
+        ]
+        assert [
+            (l.title, len(l.exercises)) for s in skills for l in s.lessons
+        ] == expected_lessons, course.title
+        for skill in skills:
+            assert [l.order_index for l in skill.lessons] == list(range(1, len(skill.lessons) + 1))
+
+
+def test_spanish_course_structure(seeded_db):
+    course = courses_in_db(seeded_db)[0]  # the demo learner's default course
     assert (course.title, course.language_code, course.flag_emoji) == ("Spanish", "es", "🇪🇸")
     assert [u.title for u in course.units] == ["Basics", "Food", "Everyday Life"]
     skills = ps.ordered_skills(course)
@@ -62,6 +100,21 @@ def test_course_structure(seeded_db):
         assert [lesson.order_index for lesson in skill.lessons] == [1, 2]
 
 
+@pytest.mark.parametrize("data", COURSES, ids=lambda c: c["language_code"])
+def test_every_registered_course_passes_validate_course(data):
+    validate_course(data)  # raises ValueError on any contract violation
+
+
+def test_validate_course_rejects_broken_content():
+    import copy
+
+    broken = copy.deepcopy(COURSES[0])
+    first_lesson = broken["units"][0]["skills"][0]["lessons"][0]
+    broken["units"][0]["skills"][0]["lessons"][0] = (first_lesson[0], first_lesson[1][:2])
+    with pytest.raises(ValueError, match="needs 5-7 exercises"):
+        validate_course(broken)
+
+
 def test_every_lesson_has_5_to_7_exercises_with_at_least_3_types(seeded_db):
     for lesson in all_lessons(seeded_db):
         exs = lesson.exercises
@@ -70,10 +123,20 @@ def test_every_lesson_has_5_to_7_exercises_with_at_least_3_types(seeded_db):
         assert [ex.order_index for ex in exs] == list(range(1, len(exs) + 1))
 
 
-def test_unit_1_uses_every_exercise_type(seeded_db):
-    unit_1 = seeded_db.scalars(select(Unit).where(Unit.order_index == 1)).one()
-    types = {ex.type for skill in unit_1.skills for lesson in skill.lessons for ex in lesson.exercises}
-    assert types == ALL_TYPES
+def test_unit_1_of_every_course_uses_every_exercise_type(seeded_db):
+    for course in courses_in_db(seeded_db):
+        unit_1 = seeded_db.scalars(
+            select(Unit).where(Unit.course_id == course.id, Unit.order_index == 1)
+        ).one()
+        types = {ex.type for s in unit_1.skills for lesson in s.lessons for ex in lesson.exercises}
+        assert types == ALL_TYPES, course.title
+
+
+def test_exercise_counts_match_the_registry(seeded_db):
+    for course, data in zip(courses_in_db(seeded_db), COURSES):
+        expected = sum(len(exs) for u in data["units"] for s in u["skills"] for _, exs in s["lessons"])
+        assert len(course_exercises(course)) == expected, course.title
+    assert count(seeded_db, Exercise) == sum(len(course_exercises(c)) for c in courses_in_db(seeded_db))
 
 
 def test_exercise_content_is_answerable(seeded_db):
@@ -171,6 +234,26 @@ def test_demo_learner_progress(seeded_db):
     assert all(p.best_mistakes >= 1 for p in progress)
 
 
+def test_demo_learner_is_on_spanish(seeded_db):
+    arnav = get_user(seeded_db)
+    spanish = courses_in_db(seeded_db)[0]
+    assert spanish.language_code == "es"
+    assert arnav.active_course_id == spanish.id
+
+
+def test_demo_learner_starts_every_other_course_fresh(seeded_db):
+    db = seeded_db
+    arnav = get_user(db)
+    others = courses_in_db(db)[1:]
+    assert len(others) == len(COURSES) - 1
+    for course in others:
+        views = ps.skill_views_for_user(db, arnav, course)
+        states = [views[s.id].state for s in ps.ordered_skills(course)]
+        assert states[0] == "AVAILABLE", course.title
+        assert set(states[1:]) <= {"LOCKED"}, course.title
+        assert all(v.lessons_completed == 0 for v in views.values()), course.title
+
+
 def test_demo_learner_achievements(seeded_db):
     assert achievement_codes(seeded_db) == ["FIRST_LESSON", "STREAK_3"]
 
@@ -225,7 +308,11 @@ def snapshot(db) -> dict[str, int]:
 def test_seed_cli_is_idempotent(db, seed_cli, capsys):
     seed_cli()
     first = snapshot(db)
-    assert first["Course"] == 1 and first["User"] == 6 and first["Skill"] == 9
+    total_skills = sum(len(u["skills"]) for c in COURSES for u in c["units"])
+    assert first["Course"] == len(COURSES) and first["User"] == 6 and first["Skill"] == total_skills
+    out = capsys.readouterr().out
+    for data in COURSES:
+        assert f"Seeded {data['title']} course" in out
     seed_cli()
     assert snapshot(db) == first
     assert "already seeded" in capsys.readouterr().out

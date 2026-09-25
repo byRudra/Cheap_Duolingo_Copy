@@ -12,10 +12,10 @@ interface OptionCardProps {
 
 /** Large tappable option used by multiple choice and fill-in-the-blank. */
 export function OptionCard({ label, hotkey, selected, disabled, status, onSelect, compact = false }: OptionCardProps) {
-  let tone = "border-line bg-white text-ink hover:bg-surface";
-  if (selected && status === "correct") tone = "border-primary bg-primary-light text-primary-dark animate-pulse-correct";
-  else if (selected && status === "incorrect") tone = "border-danger bg-danger-light text-danger-dark animate-shake";
-  else if (selected) tone = "border-secondary bg-secondary-light text-secondary-dark";
+  let tone = "border-line bg-card text-ink hover:bg-surface";
+  if (selected && status === "correct") tone = "border-primary bg-primary-light text-primary-ink animate-pulse-correct";
+  else if (selected && status === "incorrect") tone = "border-danger bg-danger-light text-danger-ink animate-shake";
+  else if (selected) tone = "border-secondary bg-secondary-light text-secondary-ink";
 
   return (
     <button

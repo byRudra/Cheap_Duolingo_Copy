@@ -40,6 +40,11 @@ class AttemptStatus(str, enum.Enum):
     FAILED = "FAILED"
 
 
+class AttemptMode(str, enum.Enum):
+    LESSON = "LESSON"  # normal play: mistakes cost hearts, completion earns XP
+    PRACTICE = "PRACTICE"  # heart practice: no heart cost, earns +1 heart, no XP
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -55,6 +60,13 @@ class User(Base):
     longest_streak: Mapped[int] = mapped_column(Integer, default=0)
     last_activity_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     daily_goal_xp: Mapped[int] = mapped_column(Integer)
+    active_course_id: Mapped[int | None] = mapped_column(
+        ForeignKey("courses.id"), nullable=True, index=True
+    )
+    # Settings (edited via PATCH /api/me/settings)
+    sound_effects: Mapped[bool] = mapped_column(Boolean, default=True)
+    daily_reminder: Mapped[bool] = mapped_column(Boolean, default=True)
+    achievement_alerts: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 
@@ -63,8 +75,9 @@ class Course(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(100))
-    language_code: Mapped[str] = mapped_column(String(10))
+    language_code: Mapped[str] = mapped_column(String(10), unique=True)
     flag_emoji: Mapped[str] = mapped_column(String(16))
+    description: Mapped[str] = mapped_column(String(255), default="")
 
     units: Mapped[list["Unit"]] = relationship(
         back_populates="course", order_by="Unit.order_index"
@@ -93,8 +106,9 @@ class Skill(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     unit_id: Mapped[int] = mapped_column(ForeignKey("units.id"), index=True)
-    # Course-wide order: drives sequential unlocking across units.
-    order_index: Mapped[int] = mapped_column(Integer, unique=True)
+    # Course-wide order (unique within a course): drives sequential unlocking
+    # across units.
+    order_index: Mapped[int] = mapped_column(Integer, index=True)
     title: Mapped[str] = mapped_column(String(100))
     icon: Mapped[str] = mapped_column(String(16))
 
@@ -144,6 +158,9 @@ class LessonAttempt(Base):
     lesson_id: Mapped[int] = mapped_column(ForeignKey("lessons.id"), index=True)
     status: Mapped[AttemptStatus] = mapped_column(
         Enum(AttemptStatus, native_enum=False), default=AttemptStatus.IN_PROGRESS
+    )
+    mode: Mapped[AttemptMode] = mapped_column(
+        Enum(AttemptMode, native_enum=False), default=AttemptMode.LESSON
     )
     mistakes: Mapped[int] = mapped_column(Integer, default=0)
     xp_awarded: Mapped[int] = mapped_column(Integer, default=0)

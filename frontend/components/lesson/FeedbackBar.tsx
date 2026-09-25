@@ -28,7 +28,7 @@ export function FeedbackBar({
   errorMessage,
   exerciseIndex,
 }: FeedbackBarProps) {
-  const tone = result === null ? "border-line bg-white" : result.correct ? "border-transparent bg-primary-light" : "border-transparent bg-danger-light";
+  const tone = result === null ? "border-line bg-card" : result.correct ? "border-transparent bg-primary-light" : "border-transparent bg-danger-light";
 
   return (
     <footer className={`border-t-2 transition-colors ${tone}`}>
@@ -37,12 +37,12 @@ export function FeedbackBar({
           {result && (
             <div className="flex animate-fade-in items-start gap-4">
               <span
-                className={`grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white ${result.correct ? "text-primary" : "text-danger"}`}
+                className={`grid h-14 w-14 shrink-0 place-items-center rounded-full bg-card ${result.correct ? "text-primary" : "text-danger"}`}
                 aria-hidden="true"
               >
                 {result.correct ? <CheckIcon className="h-8 w-8" /> : <CloseIcon className="h-8 w-8" />}
               </span>
-              <div className={result.correct ? "text-primary-dark" : "text-danger-dark"}>
+              <div className={result.correct ? "text-primary-ink" : "text-danger-ink"}>
                 <p className="text-2xl font-black">{result.correct ? PRAISE[exerciseIndex % PRAISE.length] : "Correct answer:"}</p>
                 {!result.correct && result.correct_answer && <p className="text-lg font-bold">{result.correct_answer}</p>}
                 {result.note && <p className="mt-1 font-bold">{result.note}</p>}

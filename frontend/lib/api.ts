@@ -5,11 +5,14 @@ import type {
   AttemptStart,
   CompletionSummary,
   Course,
+  CourseSummary,
   Leaderboard,
   LessonMeta,
   Me,
   Profile,
   RefillResult,
+  ResetResult,
+  SettingsUpdate,
 } from "./types";
 
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
@@ -67,11 +70,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 const post = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
+const patch = <T>(path: string, body: unknown) => request<T>(path, { method: "PATCH", body: JSON.stringify(body) });
 
 export const api = {
   me: () => request<Me>("/api/me"),
   refillHearts: () => post<RefillResult>("/api/me/hearts/refill"),
+  updateSettings: (update: SettingsUpdate) => patch<Me>("/api/me/settings", update),
+  setCourse: (courseId: number) => post<Me>("/api/me/course", { course_id: courseId }),
+  reset: (scope: "course" | "demo") => post<ResetResult>("/api/me/reset", { scope }),
   course: () => request<Course>("/api/course"),
+  courses: () => request<CourseSummary[]>("/api/courses"),
+  startPractice: () => post<AttemptStart>("/api/practice/start"),
   lesson: (lessonId: number) => request<LessonMeta>(`/api/lessons/${lessonId}`),
   startLesson: (lessonId: number) => post<AttemptStart>(`/api/lessons/${lessonId}/start`),
   answer: (attemptId: number, exerciseId: number, answer: AnswerPayload) =>

@@ -20,6 +20,13 @@
   --color-heart: #ff4b6e;
   --color-gem: #2db6f5;
 
+  /* Text on the tinted -light backgrounds (AA contrast in both themes). */
+  --color-primary-ink: #2a7a20;
+  --color-secondary-ink: #0f6c9e;
+  --color-danger-ink: #b42323;
+  --color-gold-ink: #8a5a00;
+
+  --color-card: #ffffff;
   --color-surface: #f4f6f8;
   --color-line: #e3e7eb;
   --color-line-dark: #cfd5db;
@@ -79,12 +86,34 @@
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    @apply bg-white font-sans text-ink antialiased;
+    @apply bg-card font-sans text-ink antialiased transition-colors;
   }
   :focus-visible {
     outline: 3px solid var(--color-secondary);
     outline-offset: 2px;
   }
+}
+
+/* Dark theme: same token names, darker values. data-theme is set on <html>
+   before first paint by the inline script in app/layout.tsx. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-card: #0f1b21;
+  --color-surface: #1a2a32;
+  --color-line: #2c3d47;
+  --color-line-dark: #3d525e;
+  --color-ink: #e6edf1;
+  --color-muted: #9fb0ba;
+  --color-locked: #2f3f48;
+  --color-locked-dark: #4f6470;
+  --color-primary-light: #1d3b1a;
+  --color-secondary-light: #10324a;
+  --color-danger-light: #3f1d22;
+  --color-gold-light: #3b2f12;
+  --color-primary-ink: #8fe383;
+  --color-secondary-ink: #86cdf6;
+  --color-danger-ink: #ff9d9d;
+  --color-gold-ink: #ffd166;
 }
 
 /* Chunky 3D buttons: solid fill + darker bottom edge that collapses on press. */
