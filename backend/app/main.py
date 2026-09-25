@@ -14,7 +14,6 @@ from app.routers import course, lessons, me, social
 
 logger = logging.getLogger("habla")
 
-
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     Base.metadata.create_all(engine)
@@ -27,8 +26,26 @@ async def lifespan(_app: FastAPI):
                 seed(db)
     yield
 
-
 app = FastAPI(title="Habla API", version="1.0.0", lifespan=lifespan)
+
+def _error(status_code: int, code: str, message: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code, content={"detail": {"code": code, "message": message}}
+    )
+
+@app.middleware("http")
+async def unhandled_error_middleware(request: Request, call_next):
+    """Turn unexpected exceptions into the standard error body.
+
+    Registered before CORSMiddleware so CORS stays outermost and even 500s
+    carry Access-Control-Allow-Origin (Starlette's own 500 handler sits
+    outside CORS, so the browser would otherwise see an opaque network error).
+    """
+    try:
+        return await call_next(request)
+    except Exception:
+        logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+        return _error(500, "INTERNAL_ERROR", "Something went wrong. Please try again.")
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,17 +54,9 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 
-
-def _error(status_code: int, code: str, message: str) -> JSONResponse:
-    return JSONResponse(
-        status_code=status_code, content={"detail": {"code": code, "message": message}}
-    )
-
-
 @app.exception_handler(AppError)
 async def app_error_handler(_request: Request, exc: AppError) -> JSONResponse:
     return _error(exc.status_code, exc.code, exc.message)
-
 
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -56,23 +65,14 @@ async def validation_error_handler(_request: Request, exc: RequestValidationErro
     message = first.get("msg", "Invalid request.")
     return _error(422, "VALIDATION_ERROR", f"{location}: {message}" if location else message)
 
-
 @app.exception_handler(StarletteHTTPException)
 async def http_error_handler(_request: Request, exc: StarletteHTTPException) -> JSONResponse:
     code = "NOT_FOUND" if exc.status_code == 404 else f"HTTP_{exc.status_code}"
     return _error(exc.status_code, code, str(exc.detail))
 
-
-@app.exception_handler(Exception)
-async def unhandled_error_handler(_request: Request, exc: Exception) -> JSONResponse:
-    logger.exception("Unhandled error", exc_info=exc)
-    return _error(500, "INTERNAL_ERROR", "Something went wrong. Please try again.")
-
-
 @app.get("/api/health", tags=["health"])
 def health() -> dict[str, str]:
     return {"status": "ok"}
-
 
 app.include_router(course.router)
 app.include_router(lessons.router)

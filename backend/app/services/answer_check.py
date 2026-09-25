@@ -13,8 +13,12 @@ _WHITESPACE = re.compile(r"\s+")
 
 
 def normalize(text: str) -> str:
-    """lowercase → trim → collapse whitespace → strip ``.,!?¿¡``."""
-    text = _PUNCTUATION.sub("", text.lower())
+    """lowercase → trim → collapse whitespace → strip ``.,!?¿¡``.
+
+    NFC first, so an accent typed as a combining mark (e.g. "o" + U+0301)
+    compares equal to the precomposed "ó".
+    """
+    text = _PUNCTUATION.sub("", unicodedata.normalize("NFC", text).lower())
     return _WHITESPACE.sub(" ", text).strip()
 
 
