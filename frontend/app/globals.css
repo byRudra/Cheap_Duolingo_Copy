@@ -1,26 +1,132 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ── Design tokens (Tailwind v4: generate bg-*, text-*, border-* utilities) ── */
+@theme {
+  --font-sans: var(--font-nunito), ui-rounded, system-ui, sans-serif;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-primary: #46b936;
+  --color-primary-dark: #36962a;
+  --color-primary-light: #d7f5cf;
+  --color-secondary: #1fa5ea;
+  --color-secondary-dark: #1683bd;
+  --color-secondary-light: #dbf1fd;
+  --color-danger: #ef4444;
+  --color-danger-dark: #c62f2f;
+  --color-danger-light: #ffe1e1;
+  --color-gold: #ffb91f;
+  --color-gold-dark: #d99a0b;
+  --color-gold-light: #fff3d1;
+  --color-streak: #ff8a1f;
+  --color-heart: #ff4b6e;
+  --color-gem: #2db6f5;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --color-surface: #f4f6f8;
+  --color-line: #e3e7eb;
+  --color-line-dark: #cfd5db;
+  --color-ink: #2b3440;
+  --color-muted: #6b7682;
+  --color-locked: #d9dee3;
+  --color-locked-dark: #b8c0c8;
+
+  --animate-bounce-soft: bounce-soft 1.8s ease-in-out infinite;
+  --animate-shake: shake 0.4s ease-in-out;
+  --animate-pop: pop 0.35s ease-out;
+  --animate-slide-in: slide-in 0.3s ease-out;
+  --animate-slide-up: slide-up 0.25s ease-out;
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-pulse-correct: pulse-correct 0.45s ease-out;
+  --animate-flame: flame 1.2s ease-in-out infinite;
+
+  @keyframes bounce-soft {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+  }
+  @keyframes pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.35); }
+    100% { transform: scale(1); }
+  }
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateX(24px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes pulse-correct {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+    100% { transform: scale(1); }
+  }
+  @keyframes flame {
+    0%, 100% { transform: scale(1) rotate(-2deg); }
+    50% { transform: scale(1.12) rotate(2deg); }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-white font-sans text-ink antialiased;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-secondary);
+    outline-offset: 2px;
+  }
+}
+
+/* Chunky 3D buttons: solid fill + darker bottom edge that collapses on press. */
+@utility btn-chunky {
+  @apply inline-flex min-h-12 select-none items-center justify-center gap-2 rounded-2xl border-b-4 px-6 text-base font-extrabold tracking-wide uppercase transition-[transform,border-width,filter] duration-75;
+  &:active:not(:disabled) {
+    @apply translate-y-1 border-b-0;
+    margin-bottom: 4px;
+  }
+  &:hover:not(:disabled) {
+    filter: brightness(1.05);
+  }
+  &:disabled {
+    @apply cursor-not-allowed;
+  }
+}
+
+/* Confetti: pure CSS pieces positioned by inline custom properties. */
+.confetti-piece {
+  position: absolute;
+  top: -12px;
+  width: 10px;
+  height: 14px;
+  border-radius: 3px;
+  opacity: 0;
+  animation: confetti-fall var(--duration, 2.6s) ease-in var(--delay, 0s) forwards;
+}
+@keyframes confetti-fall {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0deg); }
+  100% { opacity: 0; transform: translate3d(var(--drift, 0px), 105vh, 0) rotate(var(--spin, 540deg)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .confetti-piece {
+    display: none;
+  }
 }
