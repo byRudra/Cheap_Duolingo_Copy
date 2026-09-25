@@ -124,7 +124,7 @@ export function LessonComplete({ summary, onContinue }: { summary: CompletionSum
         </div>
 
         <div className="flex w-full gap-3">
-          <StatTile label="Total XP" tone="var(--color-gold)" icon={<BoltIcon className="h-6 w-6" />}>
+          <StatTile label="XP earned" tone="var(--color-gold)" icon={<BoltIcon className="h-6 w-6" />}>
             <span aria-label={`${summary.xp_earned} XP earned`}>+{xp}</span>
           </StatTile>
           <StatTile label="Accuracy" tone="var(--color-primary)" icon={<TargetIcon className="h-6 w-6" />}>
