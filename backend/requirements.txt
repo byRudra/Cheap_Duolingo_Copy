@@ -1,0 +1,13 @@
+# Web framework + ASGI server
+fastapi==0.141.1
+uvicorn==0.54.0
+# ORM (SQLAlchemy 2.x typed API) over SQLite
+SQLAlchemy==2.1.0
+# Request/response validation and typed env config (.env support)
+pydantic==2.13.5
+pydantic-settings==2.15.0
+# IANA timezone data: zoneinfo has no system tz database on Windows
+tzdata==2026.4
+# Tests (httpx powers FastAPI's TestClient and the smoke test)
+pytest==9.1.1
+httpx==0.28.1
