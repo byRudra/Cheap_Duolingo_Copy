@@ -54,7 +54,7 @@ Update this list as phases complete.
 - [x] 6 · Secondary: profile, leaderboard, achievements, settings. Exit: all routes render
 - [x] 7 · Polish: animations, responsive pass, loading/error/empty states. Exit: `npm run build` passes
 - [x] 8 · Verify: §9.2–9.4, fix everything found. Exit: journey passes after a hard refresh
-- [ ] 9 · Docs: README, INTERVIEW_NOTES, `.env.example` files. Exit: setup commands re-run from scratch successfully
+- [x] 9 · Docs: README, INTERVIEW_NOTES, `.env.example` files. Exit: setup commands re-run from scratch successfully
 
 ## Environment (this machine)
 
@@ -78,7 +78,7 @@ pip install -r requirements.txt
 python -m app.seed --reset            # idempotent; creates/overwrites backend/app.db
 uvicorn app.main:app --reload --port 8000   # Swagger UI at http://localhost:8000/docs
 pytest                                # full suite
-pytest tests/test_streak.py -k gap    # single file / single test
+pytest tests/test_gamification.py -k streak   # single file / filtered tests
 python scripts/smoke_test.py          # needs the server running on a freshly seeded DB
 
 # Frontend (from frontend/)
