@@ -55,6 +55,7 @@ def get_profile(
         skills_total=skills_total,
         course_title=course.title,
         course_flag=course.flag_emoji,
+        course_language_code=course.language_code,
         achievements=_achievements(db, user),
     )
 

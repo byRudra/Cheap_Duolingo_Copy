@@ -219,6 +219,7 @@ class ProfileOut(BaseModel):
     skills_total: int
     course_title: str
     course_flag: str
+    course_language_code: str
     achievements: list[AchievementOut]
 
 
